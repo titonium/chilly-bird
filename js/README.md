@@ -1,70 +1,38 @@
-\# 🎮 CHILLY BIRD
+\## ⚙️ Configuration Firebase
 
 
 
-Jeu Flappy Bird cyberpunk avec graphismes néon, musique classique et classement mondial Firebase.
+\### Installation initiale
 
 
 
-!\[Chilly Bird](https://img.shields.io/badge/Version-1.0-brightgreen)
+1\. Copie le fichier de configuration :
 
-!\[Firebase](https://img.shields.io/badge/Firebase-Enabled-orange)
+```bash
 
-!\[License](https://img.shields.io/badge/License-MIT-blue)
+&nbsp;  cp js/firebase-config.example.js js/firebase-config.js
 
-
-
-\## 🎯 Fonctionnalités
+```
 
 
 
-\### Gameplay
-
-\- ✅ \*\*2 vies au départ\*\* - Seconde chance avant le game over
-
-\- ✅ \*\*Vitesse progressive\*\* - Le jeu accélère avec votre score
-
-\- ✅ \*\*Tuyaux mobiles\*\* - Difficulté croissante (30% → 90%)
-
-\- ✅ \*\*Sauvegarde automatique\*\* - Reprenez votre partie
-
-\- ✅ \*\*20 messages humoristiques\*\* - Vannes personnalisées au game over
+2\. Édite `js/firebase-config.js` avec tes vraies clés Firebase
 
 
 
-\### Power-ups Collectables
-
-\- ❤️ \*\*VIE\*\* - +1 vie instantanée
-
-\- 🐌 \*\*SLOW\*\* - Ralentissement 50% (5 secondes)
-
-\- ⚡ \*\*SPEED\*\* - Accélération 50% (3 secondes)
-
-\- ↔️ \*\*LARGE\*\* - Gap agrandi à 280px (5 secondes)
+3\. Le fichier `firebase-config.js` est dans `.gitignore` et ne sera jamais commité
 
 
 
-\### Graphismes \& Audio
-
-\- 🎨 \*\*Esthétique cyberpunk néon\*\* - Cyan et magenta
-
-\- 🎵 \*\*Canon de Pachelbel\*\* - Musique classique multipistes
-
-\- 💥 \*\*Effets visuels\*\* - Explosions, particules, ondes de choc
-
-\- 🔊 \*\*Effets sonores\*\* - Saut, points, crash
+\### Obtenir tes clés Firebase
 
 
 
-\### Classement
+1\. Va sur https://console.firebase.google.com/
 
-\- 🌐 \*\*TOP 3 mondial\*\* - Scores partagés Firebase
+2\. Sélectionne ton projet
 
-\- 📱 \*\*Fallback localStorage\*\* - Fonctionne hors ligne
+3\. Project Settings → General → Your apps
 
-\- 💾 \*\*Sauvegarde persistante\*\* - Scores et progression
-
-
-
-\## 📁 Structure du Projet
+4\. Copie les clés dans `firebase-config.js`
 
