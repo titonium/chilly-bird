@@ -33,7 +33,7 @@ async function getHighScores() {
     try {
         const snapshot = await database.ref('highscores')
             .orderByChild('score')
-            .limitToLast(3)
+            .limitToLast(5)
             .once('value');
         
         const scores = [];
@@ -44,8 +44,8 @@ async function getHighScores() {
         // Inverser pour avoir du plus grand au plus petit
         scores.reverse();
 
-        // Remplir avec des scores vides si moins de 3
-        while (scores.length < 3) {
+        // Remplir avec des scores vides si moins de 5
+        while (scores.length < 5) {
             scores.push({ name: '---', score: 0 });
         }
 
@@ -113,7 +113,7 @@ async function showHighScores() {
 
     scoresList.innerHTML = '';
 
-    highScores.slice(0, 3).forEach((entry, index) => {
+    highScores.slice(0, 5).forEach((entry, index) => {
         const div = document.createElement('div');
         div.className = 'scoreEntry';
         div.innerHTML = `
