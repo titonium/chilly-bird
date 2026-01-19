@@ -9,8 +9,6 @@ Thumbs.db
 .env
 .env.local
 
-# Configuration Firebase (PRIVÉE)
-js/firebase-config.js
 
 # Dépendances (si tu ajoutes npm plus tard)
 node_modules/
