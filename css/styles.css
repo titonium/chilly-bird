@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Righteous&display=swap');
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: #000;
+    font-family: 'Righteous', cursive;
+}
+
+/* Game Container */
+#gameContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(180deg, #1a0033 0%, #330066 40%, #ff00ff 100%);
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* Score Display */
+#score {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bungee', cursive;
+    font-size: 80px;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff,
+                 0 0 40px #00ffff,
+                 0 0 60px #00ffff,
+                 4px 4px 0 #ff00ff,
+                 8px 8px 0 #000;
+    pointer-events: none;
+    z-index: 10;
+    animation: scoreGlow 2s ease-in-out infinite;
+}
+
+@keyframes scoreGlow {
+    0%, 100% {
+        text-shadow: 0 0 20px #00ffff,
+                     0 0 40px #00ffff,
+                     0 0 60px #00ffff,
+                     4px 4px 0 #ff00ff,
+                     8px 8px 0 #000;
+    }
+    50% {
+        text-shadow: 0 0 30px #00ffff,
+                     0 0 60px #00ffff,
+                     0 0 90px #00ffff,
+                     4px 4px 0 #ff00ff,
+                     8px 8px 0 #000;
+    }
+}
+
+/* Lives Display */
+#lives {
+    position: fixed;
+    top: 40px;
+    left: 40px;
+    font-family: 'Bungee', cursive;
+    font-size: 48px;
+    color: #ff00ff;
+    text-shadow: 0 0 20px #ff00ff,
+                 0 0 40px #ff00ff,
+                 3px 3px 0 #000;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Sound Toggle */
+#soundToggle {
+    position: fixed;
+    top: 40px;
+    right: 40px;
+    font-size: 48px;
+    cursor: pointer;
+    z-index: 100;
+    opacity: 0.8;
+    transition: opacity 0.3s;
+}
+
+#soundToggle:hover {
+    opacity: 1;
+}
+
+#soundToggle.muted {
+    opacity: 0.5;
+}
+
+/* Instructions */
+#instructions {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff,
+                 0 0 40px #00ffff;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+}
+
+#instructions.show {
+    opacity: 1;
+}
+
+/* Message Screens (Welcome & Game Over) */
+#message,
+#welcomeScreen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.95), rgba(0, 255, 255, 0.95));
+    color: white;
+    padding: 60px 80px;
+    border-radius: 30px;
+    text-align: center;
+    font-size: 28px;
+    box-shadow: 0 0 50px rgba(255, 0, 255, 0.8),
+                0 0 100px rgba(0, 255, 255, 0.6),
+                inset 0 0 40px rgba(255, 255, 255, 0.2);
+    border: 4px solid #fff;
+    z-index: 100;
+    animation: messageFloat 3s ease-in-out infinite;
+}
+
+@keyframes messageFloat {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        transform: translate(-50%, -52%) scale(1.02);
+    }
+}
+
+h2 {
+    font-family: 'Bungee', cursive;
+    font-size: 72px;
+    margin-bottom: 30px;
+    color: #fff;
+    text-shadow: 0 0 20px #000,
+                 4px 4px 0 #ff00ff,
+                 8px 8px 0 #00ffff;
+    animation: titlePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+p {
+    font-size: 32px;
+    margin: 20px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Buttons */
+button {
+    padding: 20px 50px;
+    font-size: 32px;
+    font-family: 'Bungee', cursive;
+    background: linear-gradient(135deg, #00ffff, #ff00ff);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+    transition: all 0.3s ease;
+    margin: 10px;
+}
+
+button:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 10px 40px rgba(255, 0, 255, 0.8);
+}
+
+/* High S

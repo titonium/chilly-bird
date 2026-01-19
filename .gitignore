@@ -1,0 +1,18 @@
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environnement
+.env
+.env.local
+
+# Dépendances (si tu ajoutes npm plus tard)
+node_modules/
+
+# Firebase cache
+.firebase/
+firebase-debug.log
+.firebaserc
