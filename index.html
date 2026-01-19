@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>CHILLY BIRD</title>
     
     <!-- Firebase SDK -->
@@ -33,16 +33,14 @@
             <p>🎮 Jeu de vol cyberpunk 🎮</p>
             <p>Évitez les obstacles !</p>
             <div id="nameInputStart">
-                <p style="font-size: 24px; margin: 20px 0;">Entrez votre nom :</p>
+                <p>Entrez votre nom :</p>
                 <input type="text" id="playerNameStart" maxlength="10" placeholder="PSEUDO" />
                 <button onclick="startWithName()">▶ DÉMARRER</button>
             </div>
             <div id="highScoresTable">
                 <h3>🏆 TOP 3 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
-                <p id="firebaseStatus" style="font-size: 14px; margin-top: 10px; color: #00ffff;">
-                    Chargement des scores...
-                </p>
+                <p id="firebaseStatus">Chargement des scores...</p>
             </div>
         </div>
         

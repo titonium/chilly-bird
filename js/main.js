@@ -14,6 +14,29 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
+// Empêcher le zoom sur mobile
+document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+});
+
+document.addEventListener('gesturechange', function(e) {
+    e.preventDefault();
+});
+
+document.addEventListener('gestureend', function(e) {
+    e.preventDefault();
+});
+
+// Empêcher le comportement par défaut du touch
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
 // Initialiser Firebase
 initFirebase();
 
@@ -42,11 +65,20 @@ showHighScores();
 // Gestion des événements
 
 // Clic sur le canvas
-canvas.addEventListener('click', () => {
+canvas.addEventListener('click', (e) => {
+    e.preventDefault();
     if (gameState.started && !gameState.over) {
         jump();
     }
 });
+
+// Touch sur le canvas (mobile)
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameState.started && !gameState.over) {
+        jump();
+    }
+}, { passive: false });
 
 // Touches du clavier
 document.addEventListener('keydown', (e) => {

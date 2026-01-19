@@ -1,18 +1,50 @@
 // ===== GESTION DES POWER-UPS =====
 
-// Créer un power-up aléatoire
+// Créer un power-up aléatoire À ÉGALE DISTANCE ENTRE DEUX TUYAUX
 function createPowerUp() {
+    // Ne créer un power-up que s'il y a au moins 2 tuyaux
+    if (gameState.pipes.length < 2) return;
+    
     const types = Object.keys(POWERUP_TYPES);
     const type = types[Math.floor(Math.random() * types.length)];
     const config = POWERUP_TYPES[type];
 
+    // Trouver deux tuyaux consécutifs
+    let pipe1 = null;
+    let pipe2 = null;
+    
+    for (let i = 0; i < gameState.pipes.length - 1; i++) {
+        const currentPipe = gameState.pipes[i];
+        const nextPipe = gameState.pipes[i + 1];
+        
+        // Vérifier que les deux tuyaux sont devant l'oiseau
+        if (currentPipe.x > gameState.bird.x + 100) {
+            pipe1 = currentPipe;
+            pipe2 = nextPipe;
+            break;
+        }
+    }
+    
+    // Si on n'a pas trouvé deux tuyaux valides, on sort
+    if (!pipe1 || !pipe2) return;
+    
+    // Position X : au milieu entre les deux tuyaux
+    const x = pipe1.x + ((pipe2.x - pipe1.x) / 2);
+    
+    // Position Y : au centre de la zone de passage du premier tuyau
+    // On ajoute une petite variation aléatoire pour ne pas toujours être au centre exact
+    const gapCenter1 = pipe1.top + (gameState.pipeGap / 2);
+    const variationY = (Math.random() - 0.5) * (gameState.pipeGap * 0.3); // ±30% du gap
+    const y = gapCenter1 + variationY;
+    
+    // S'assurer que le power-up reste dans une zone jouable
     const minY = 100;
     const maxY = canvas.height - GAME_CONFIG.GROUND_HEIGHT - 100;
-    const y = Math.random() * (maxY - minY) + minY;
+    const safeY = Math.max(minY, Math.min(maxY, y));
 
     gameState.powerUps.push({
-        x: canvas.width,
-        y: y,
+        x: x,
+        y: safeY,
         size: 40,
         type: type,
         config: config,
@@ -109,7 +141,8 @@ function updatePowerUps() {
     }
 
     // Créer un nouveau power-up aléatoirement (5% de chance toutes les 60 frames)
-    if (gameState.frameCount % 60 === 0 && Math.random() < 0.05) {
+    // ET seulement s'il y a assez de tuyaux
+    if (gameState.frameCount % 60 === 0 && Math.random() < 0.05 && gameState.pipes.length >= 2) {
         createPowerUp();
     }
 }
