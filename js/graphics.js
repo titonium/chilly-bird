@@ -1,142 +1,348 @@
-// ===== PHYSIQUE DU JEU =====
+// ===== GESTION GRAPHIQUE =====
 
-// Créer un tuyau
-function createPipe() {
-    const minTop = 100;
-    const maxTop = canvas.height - GAME_CONFIG.GROUND_HEIGHT - gameState.pipeGap - 100;
-    const top = Math.random() * (maxTop - minTop) + minTop;
+// Dessiner le fond
+function drawBackground() {
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#1a0033');
+    grad.addColorStop(0.4, '#330066');
+    grad.addColorStop(1, '#ff00ff');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Calculer la probabilité de tuyaux mobiles selon le score
-    let movingProbability = 0;
+    // Étoiles défilantes
+    gameState.stars.forEach(star => {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+            star.y = 0;
+            star.x = Math.random() * canvas.width;
+        }
 
-    if (gameState.score >= GAME_CONFIG.MOVING_PIPES_START_SCORE) {
-        const bonusLevels = Math.floor((gameState.score - GAME_CONFIG.MOVING_PIPES_START_SCORE) / 5);
-        movingProbability = GAME_CONFIG.MOVING_PIPES_BASE_PROBABILITY + (bonusLevels * GAME_CONFIG.MOVING_PIPES_INCREASE);
-        movingProbability = Math.min(movingProbability, GAME_CONFIG.MOVING_PIPES_MAX_PROBABILITY);
-    }
-
-    const isMoving = Math.random() < movingProbability;
-
-    gameState.pipes.push({
-        x: canvas.width,
-        top: top,
-        bottom: top + gameState.pipeGap,
-        passed: false,
-        moving: isMoving,
-        moveSpeed: isMoving ? (Math.random() * 2.5 + 1.5) * (Math.random() > 0.5 ? 1 : -1) : 0,
-        originalTop: top,
-        moveRange: 80
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = Math.random() * 0.5 + 0.5;
+        ctx.fillRect(star.x, star.y, star.size, star.size);
     });
+
+    ctx.globalAlpha = 1;
 }
 
-// Mettre à jour l'oiseau avec delta time
-function updateBird(deltaMultiplier = 1) {
-    gameState.bird.velocity += GAME_CONFIG.BIRD_GRAVITY * deltaMultiplier;
-    gameState.bird.y += gameState.bird.velocity * deltaMultiplier;
-}
+// Dessiner l'oiseau
+function drawBird() {
+    ctx.save();
 
-// Mettre à jour les tuyaux avec delta time
-function updatePipes(deltaMultiplier = 1) {
-    gameState.pipes.forEach((pipe, index) => {
-        pipe.x -= gameState.pipeSpeed * deltaMultiplier;
+    const rotation = Math.min(Math.max(gameState.bird.velocity * 0.05, -0.5), 0.5);
+    ctx.translate(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
+    ctx.rotate(rotation);
+    ctx.translate(-gameState.bird.width / 2, -gameState.bird.height / 2);
 
-        // Animer les tuyaux mobiles
-        if (pipe.moving) {
-            pipe.top += pipe.moveSpeed * deltaMultiplier;
+    // Aura lumineuse
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 30;
 
-            // Inverser la direction si on atteint les limites
-            if (pipe.top <= pipe.originalTop - pipe.moveRange ||
-                pipe.top >= pipe.originalTop + pipe.moveRange) {
-                pipe.moveSpeed *= -1;
-            }
+    // Corps principal
+    ctx.fillStyle = '#00ffff';
+    ctx.fillRect(0, 8, 40, 24);
 
-            // Mettre à jour la position du bas
-            pipe.bottom = pipe.top + gameState.pipeGap;
-        }
+    // Détails lumineux
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(5, 12, 30, 4);
+    ctx.fillRect(5, 20, 30, 4);
 
-        // Vérifier si le tuyau est passé
-        if (!pipe.passed && pipe.x + GAME_CONFIG.PIPE_WIDTH < gameState.bird.x) {
-            pipe.passed = true;
-            gameState.score++;
-            document.getElementById('score').textContent = gameState.score;
+    // Aile animée
+    const wingOffset = Math.sin(gameState.frameCount * 0.2) * 5;
+    ctx.fillStyle = '#ff00ff';
+    ctx.shadowColor = '#ff00ff';
+    ctx.fillRect(12, 16 + wingOffset, 20, 8);
 
-            // Son de point marqué
-            playScoreSound();
+    // Tête
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.fillRect(35, 12, 15, 16);
 
-            // Explosion de particules
-            for (let i = 0; i < 20; i++) {
-                createParticle(
-                    gameState.bird.x,
-                    gameState.bird.y + gameState.bird.height / 2,
-                    Math.random() > 0.5 ? '#00ffff' : '#ff00ff'
-                );
-            }
-        }
+    // Œil
+    ctx.fillStyle = '#ff00ff';
+    ctx.fillRect(42, 16, 6, 6);
 
-        // Supprimer les tuyaux hors écran
-        if (pipe.x + GAME_CONFIG.PIPE_WIDTH < 0) {
-            gameState.pipes.splice(index, 1);
-        }
-    });
-}
-
-// Vérifier les collisions
-function checkCollisions() {
-    // Collision avec le sol
-    if (gameState.bird.y + gameState.bird.height >= canvas.height - GAME_CONFIG.GROUND_HEIGHT) {
-        return true;
+    // Traînée de particules
+    if (gameState.frameCount % 3 === 0 && gameState.started && !gameState.over) {
+        createParticle(gameState.bird.x, gameState.bird.y + gameState.bird.height / 2, '#00ffff');
     }
 
-    // Collision avec le plafond
-    if (gameState.bird.y <= 0) {
-        return true;
-    }
-
-    // Collision avec les tuyaux
-    for (let pipe of gameState.pipes) {
-        if (gameState.bird.x + gameState.bird.width > pipe.x &&
-            gameState.bird.x < pipe.x + GAME_CONFIG.PIPE_WIDTH) {
-            if (gameState.bird.y < pipe.top ||
-                gameState.bird.y + gameState.bird.height > pipe.bottom) {
-                return true;
-            }
-        }
-    }
-
-    return false;
+    ctx.restore();
 }
 
-// Faire sauter l'oiseau
-function jump() {
-    if (!gameState.started || gameState.over) return;
+// Dessiner un tuyau
+function drawPipe(pipe) {
+    ctx.save();
 
-    gameState.bird.velocity = GAME_CONFIG.BIRD_JUMP_POWER;
+    ctx.shadowColor = '#ff00ff';
+    ctx.shadowBlur = 20;
 
-    // Son de saut
-    playJumpSound();
+    // Tuyau du haut
+    const gradientTop = ctx.createLinearGradient(pipe.x, 0, pipe.x + GAME_CONFIG.PIPE_WIDTH, 0);
+    gradientTop.addColorStop(0, '#ff00ff');
+    gradientTop.addColorStop(0.5, '#ff0080');
+    gradientTop.addColorStop(1, '#ff00ff');
+    ctx.fillStyle = gradientTop;
+    ctx.fillRect(pipe.x, 0, GAME_CONFIG.PIPE_WIDTH, pipe.top);
 
-    // Particules de saut
-    for (let i = 0; i < 10; i++) {
-        createParticle(
-            gameState.bird.x + gameState.bird.width / 2,
-            gameState.bird.y + gameState.bird.height,
-            '#00ffff'
-        );
+    // Lignes lumineuses
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 10;
+    for (let i = 0; i < pipe.top; i += 40) {
+        ctx.fillRect(pipe.x + 5, i, GAME_CONFIG.PIPE_WIDTH - 10, 3);
     }
-}
 
-// Mettre à jour la vitesse du jeu
-function updateGameSpeed() {
-    if (gameState.started && !gameState.over) {
-        let baseSpeed = GAME_CONFIG.BASE_PIPE_SPEED + (gameState.score * GAME_CONFIG.SPEED_INCREASE_RATE);
+    // Chapeau du haut
+    ctx.fillStyle = '#00ffff';
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 30;
+    ctx.fillRect(pipe.x - 10, pipe.top - 40, GAME_CONFIG.PIPE_WIDTH + 20, 40);
 
-        // Modifier la vitesse selon le power-up actif
-        if (gameState.activePowerUp === 'SLOW') {
-            gameState.pipeSpeed = baseSpeed * 0.5; // 50% plus lent
-        } else if (gameState.activePowerUp === 'FAST') {
-            gameState.pipeSpeed = baseSpeed * 1.5; // 50% plus rapide
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(pipe.x - 10, pipe.top - 40, GAME_CONFIG.PIPE_WIDTH + 20, 40);
+
+    // Tuyau du bas
+    const gradientBottom = ctx.createLinearGradient(pipe.x, pipe.bottom, pipe.x + GAME_CONFIG.PIPE_WIDTH, pipe.bottom);
+    gradientBottom.addColorStop(0, '#ff00ff');
+    gradientBottom.addColorStop(0.5, '#ff0080');
+    gradientBottom.addColorStop(1, '#ff00ff');
+    ctx.fillStyle = gradientBottom;
+    ctx.fillRect(pipe.x, pipe.bottom, GAME_CONFIG.PIPE_WIDTH, canvas.height - pipe.bottom - GAME_CONFIG.GROUND_HEIGHT);
+
+    // Lignes lumineuses
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 10;
+    for (let i = pipe.bottom; i < canvas.height - GAME_CONFIG.GROUND_HEIGHT; i += 40) {
+        ctx.fillRect(pipe.x + 5, i, GAME_CONFIG.PIPE_WIDTH - 10, 3);
+    }
+
+    // Chapeau du bas
+    ctx.fillStyle = '#00ffff';
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 30;
+    ctx.fillRect(pipe.x - 10, pipe.bottom, GAME_CONFIG.PIPE_WIDTH + 20, 40);
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(pipe.x - 10, pipe.bottom, GAME_CONFIG.PIPE_WIDTH + 20, 40);
+
+    // Indicateur pour tuyaux mobiles
+    if (pipe.moving) {
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#ffff00';
+        ctx.fillStyle = '#ffff00';
+
+        const arrowY = pipe.top + gameState.pipeGap / 2;
+        const arrowOffset = Math.sin(gameState.frameCount * 0.15) * 8;
+
+        if (pipe.moveSpeed > 0) {
+            // Flèche haut
+            ctx.beginPath();
+            ctx.moveTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY - 30 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 - 15, arrowY - 15 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 + 15, arrowY - 15 + arrowOffset);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY - 45 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 - 12, arrowY - 33 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 + 12, arrowY - 33 + arrowOffset);
+            ctx.fill();
         } else {
-            gameState.pipeSpeed = baseSpeed;
+            // Flèche bas
+            ctx.beginPath();
+            ctx.moveTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY + 30 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 - 15, arrowY + 15 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 + 15, arrowY + 15 + arrowOffset);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY + 45 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 - 12, arrowY + 33 + arrowOffset);
+            ctx.lineTo(pipe.x + GAME_CONFIG.PIPE_WIDTH / 2 + 12, arrowY + 33 + arrowOffset);
+            ctx.fill();
         }
+
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 5;
+        ctx.fillText('MOBILE', pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY + 5);
+    }
+
+    ctx.restore();
+}
+
+// Dessiner le sol
+function drawGround() {
+    ctx.save();
+
+    const gradient = ctx.createLinearGradient(0, canvas.height - GAME_CONFIG.GROUND_HEIGHT, 0, canvas.height);
+    gradient.addColorStop(0, '#ff00ff');
+    gradient.addColorStop(1, '#1a0033');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, canvas.height - GAME_CONFIG.GROUND_HEIGHT, canvas.width, GAME_CONFIG.GROUND_HEIGHT);
+
+    // Ligne supérieure brillante
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - GAME_CONFIG.GROUND_HEIGHT);
+    ctx.lineTo(canvas.width, canvas.height - GAME_CONFIG.GROUND_HEIGHT);
+    ctx.stroke();
+
+    // Grille animée
+    for (let i = 0; i < canvas.width; i += 20) {
+        const offset = (gameState.frameCount * 2) % 40;
+        ctx.strokeStyle = '#00ffff';
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(i - offset, canvas.height - GAME_CONFIG.GROUND_HEIGHT);
+        ctx.lineTo(i - offset, canvas.height);
+        ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+}
+
+// Dessiner les particules
+function drawParticles() {
+    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+        const p = gameState.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+
+        if (p.life <= 0) {
+            gameState.particles.splice(i, 1);
+            continue;
+        }
+
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life / 30;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+}
+
+// Dessiner les ondes d'explosion
+function drawExplosionWaves() {
+    for (let i = gameState.explosionWaves.length - 1; i >= 0; i--) {
+        const wave = gameState.explosionWaves[i];
+
+        wave.radius += 8;
+        wave.alpha -= 0.02;
+
+        if (wave.alpha <= 0) {
+            gameState.explosionWaves.splice(i, 1);
+            continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = wave.alpha;
+        ctx.strokeStyle = '#ff00ff';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#ff00ff';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#00ffff';
+        ctx.shadowColor = '#00ffff';
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius + 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+// Créer une particule
+function createParticle(x, y, color) {
+    gameState.particles.push({
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.5) * 6,
+        life: 30,
+        color: color,
+        size: Math.random() * 4 + 2
+    });
+}
+
+// Créer une explosion
+function createExplosion(x, y) {
+    // Flash blanc au centre
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 100;
+    ctx.beginPath();
+    ctx.arc(x, y, 50, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Onde de choc
+    gameState.explosionWaves.push({
+        x: x,
+        y: y,
+        radius: 0,
+        maxRadius: 300,
+        alpha: 1
+    });
+
+    gameState.explosionWaves.push({
+        x: x,
+        y: y,
+        radius: 20,
+        maxRadius: 320,
+        alpha: 0.8
+    });
+
+    // Particules de débris
+    for (let i = 0; i < 100; i++) {
+        const angle = (Math.PI * 2 * i) / 100;
+        const speed = Math.random() * 8 + 4;
+        gameState.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 60,
+            color: ['#ff00ff', '#00ffff', '#ffff00', '#ff0000', '#ffffff'][Math.floor(Math.random() * 5)],
+            size: Math.random() * 6 + 3
+        });
+    }
+
+    // Particules de fumée
+    for (let i = 0; i < 30; i++) {
+        gameState.particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 3,
+            vy: -Math.random() * 5,
+            life: 90,
+            color: 'rgba(100, 100, 100, 0.5)',
+            size: Math.random() * 15 + 10
+        });
+    }
+}
+
+// Initialiser les étoiles
+function createStars() {
+    gameState.stars = []; // Réinitialiser le tableau
+    for (let i = 0; i < 100; i++) {
+        gameState.stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            speed: Math.random() * 2 + 1,
+            size: Math.random() * 2 + 1
+        });
     }
 }
