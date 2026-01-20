@@ -22,6 +22,26 @@ body {
     height: 100%;
 }
 
+/* Version Number - En haut à gauche */
+#version {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: rgba(0, 255, 255, 0.5);
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+    z-index: 1000;
+    pointer-events: none;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+#version:hover {
+    color: rgba(0, 255, 255, 0.9);
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+}
+
 /* Game Container */
 #gameContainer {
     position: fixed;
@@ -212,7 +232,7 @@ button:hover, button:active {
     box-shadow: 0 10px 40px rgba(255, 0, 255, 0.8);
 }
 
-/* High Scores Table - RÉDUIT */
+/* High Scores Table - RÉDUIT avec TOP 10 */
 #highScoresTable {
     margin: 15px 0;
     padding: 15px;
@@ -294,12 +314,6 @@ button:hover, button:active {
 
 #highScoresTable::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #ff00ff, #00ffff);
-}
-
-#firebaseStatus {
-    font-size: clamp(10px, 2vw, 14px);
-    margin-top: 8px;
-    color: #00ffff;
 }
 
 /* Name Input - STYLE AMÉLIORÉ COMME AVANT */
@@ -406,5 +420,9 @@ button:hover, button:active {
     
     #highScoresTable {
         padding: 10px;
+    }
+    
+    #version {
+        font-size: 8px;
     }
 }
