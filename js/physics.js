@@ -20,7 +20,8 @@ function createPipe() {
     gameState.pipes.push({
         x: canvas.width,
         top: top,
-        bottom: top + gameState.pipeGap,
+        bottom: top + gameState.pipeGap, // ✅ Utilise le gap ACTUEL
+        gap: gameState.pipeGap, // ✅ NOUVEAU : Stocke le gap pour ce tuyau
         passed: false,
         moving: isMoving,
         moveSpeed: isMoving ? (Math.random() * 2.5 + 1.5) * (Math.random() > 0.5 ? 1 : -1) : 0,
@@ -29,20 +30,20 @@ function createPipe() {
     });
 }
 
-// Mettre à jour l'oiseau
-function updateBird() {
-    gameState.bird.velocity += GAME_CONFIG.BIRD_GRAVITY;
-    gameState.bird.y += gameState.bird.velocity;
+// Mettre à jour l'oiseau avec delta time
+function updateBird(deltaMultiplier = 1) {
+    gameState.bird.velocity += GAME_CONFIG.BIRD_GRAVITY * deltaMultiplier;
+    gameState.bird.y += gameState.bird.velocity * deltaMultiplier;
 }
 
-// Mettre à jour les tuyaux
-function updatePipes() {
+// Mettre à jour les tuyaux avec delta time
+function updatePipes(deltaMultiplier = 1) {
     gameState.pipes.forEach((pipe, index) => {
-        pipe.x -= gameState.pipeSpeed;
+        pipe.x -= gameState.pipeSpeed * deltaMultiplier;
 
         // Animer les tuyaux mobiles
         if (pipe.moving) {
-            pipe.top += pipe.moveSpeed;
+            pipe.top += pipe.moveSpeed * deltaMultiplier;
 
             // Inverser la direction si on atteint les limites
             if (pipe.top <= pipe.originalTop - pipe.moveRange ||
@@ -50,8 +51,8 @@ function updatePipes() {
                 pipe.moveSpeed *= -1;
             }
 
-            // Mettre à jour la position du bas
-            pipe.bottom = pipe.top + gameState.pipeGap;
+            // ✅ Mettre à jour la position du bas en utilisant le GAP DU TUYAU
+            pipe.bottom = pipe.top + pipe.gap;
         }
 
         // Vérifier si le tuyau est passé

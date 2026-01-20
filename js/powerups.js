@@ -140,7 +140,7 @@ function updatePowerUps(deltaMultiplier = 1) {
     }
 
     // Créer un nouveau power-up aléatoirement
-    if (gameState.frameCount % 60 === 0 && Math.random() < 0.05 && gameState.pipes.length >= 2) {
+    if (gameState.frameCount % 60 === 0 && Math.random() < 0.20 && gameState.pipes.length >= 2) {
         createPowerUp();
     }
 }
