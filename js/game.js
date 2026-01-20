@@ -5,8 +5,8 @@ const gameState = {
     bird: {
         x: 150,
         y: 0,
-        width: GAME_CONFIG.BIRD_WIDTH,
-        height: GAME_CONFIG.BIRD_HEIGHT,
+        width: 50,
+        height: 40,
         velocity: 0
     },
     pipes: [],
@@ -17,26 +17,38 @@ const gameState = {
     particles: [],
     stars: [],
     explosionWaves: [],
-    lives: GAME_CONFIG.STARTING_LIVES,
+    lives: 2,
     playerName: '',
     powerUps: [],
     activePowerUp: null,
     powerUpTimer: 0,
-    pipeGap: GAME_CONFIG.BASE_PIPE_GAP,
-    pipeSpeed: GAME_CONFIG.BASE_PIPE_SPEED,
+    pipeGap: 200,
+    pipeSpeed: 8,
     // Delta time pour FPS constant
     lastTime: 0,
     deltaTime: 0,
     targetFPS: 60,
     frameInterval: 1000 / 60, // 16.67ms pour 60 FPS
-    powerUpSpawnAccumulator: 0 // Accumulateur pour power-ups
+    pipeCount: 0 // Compteur de tuyaux pour spawner les powerups tous les 5 tuyaux
 };
+
+// Mettre à jour les dimensions du jeu selon la résolution
+function updateGameDimensions() {
+    gameState.bird.width = GAME_CONFIG.BIRD_WIDTH;
+    gameState.bird.height = GAME_CONFIG.BIRD_HEIGHT;
+    gameState.bird.x = FIXED_WIDTH * 0.1; // 10% depuis la gauche
+    gameState.pipeGap = GAME_CONFIG.BASE_PIPE_GAP;
+    gameState.pipeSpeed = GAME_CONFIG.BASE_PIPE_SPEED;
+}
 
 // Démarrer le jeu avec le nom du joueur
 function startWithName() {
     const nameInput = document.getElementById('playerNameStart');
     gameState.playerName = nameInput.value.trim() || 'JOUEUR';
     gameState.playerName = gameState.playerName.toUpperCase();
+
+    // Sauvegarder le nom du joueur localement
+    localStorage.setItem('chillyBirdPlayerName', gameState.playerName);
 
     // Cacher l'écran de bienvenue
     document.getElementById('welcomeScreen').style.display = 'none';
@@ -80,6 +92,8 @@ function startGame() {
     gameState.particles = [];
     gameState.explosionWaves = [];
     gameState.pipeSpeed = GAME_CONFIG.BASE_PIPE_SPEED;
+    gameState.pipeCount = 0; // Reset du compteur pour les powerups
+    resetBackgroundTransition(); // Reset de la transition de fond
 
     // Démarrer la musique si le son est activé
     if (soundEnabled) {
@@ -107,12 +121,19 @@ async function showGameOver() {
     // Vérifier si c'est un high score
     const isHigh = await isHighScore(gameState.score);
 
+    // Obtenir la position globale
+    const rankInfo = await getGlobalRank(gameState.score);
+    const rankText = rankInfo.rank
+        ? `<p style="color: #00ffff; font-size: 18px;">📊 Position mondiale : <strong>${rankInfo.rank}${rankInfo.rank === 1 ? 'er' : 'ème'}</strong> sur ${rankInfo.total} joueurs</p>`
+        : '';
+
     if (isHigh) {
         messageEl.innerHTML = `
             <h2>🎉 NOUVEAU RECORD! 🎉</h2>
             <p style="color: #ffbe0b; font-size: 20px; margin: 15px 0;">${funnyMsg}</p>
             <p>Félicitations ${gameState.playerName} !</p>
-            <p>Score Final: ${gameState.score}</p>
+            <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${gameState.score}</strong></p>
+            ${rankText}
             <div id="highScoresTable">
                 <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
@@ -125,7 +146,8 @@ async function showGameOver() {
         messageEl.innerHTML = `
             <h2>💥 GAME OVER 💥</h2>
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
-            <p>Score Final: ${gameState.score}</p>
+            <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${gameState.score}</strong></p>
+            ${rankText}
             <div id="highScoresTable">
                 <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
@@ -174,6 +196,13 @@ function update(deltaMultiplier) {
     // Créer de nouveaux tuyaux (basé sur le temps, pas les frames)
     if (gameState.frameCount % GAME_CONFIG.PIPE_SPAWN_INTERVAL === 0) {
         createPipe();
+        gameState.pipeCount++;
+
+        // Créer un power-up tous les 5 tuyaux
+        if (gameState.pipeCount >= 5 && gameState.pipes.length >= 2) {
+            createPowerUp();
+            gameState.pipeCount = 0;
+        }
     }
 
     // Vérifier les collisions
@@ -209,6 +238,10 @@ function draw() {
     drawParticles();
     drawBird();
     drawActivePowerUp();
+    // Barre de progression (seulement si le jeu est en cours)
+    if (gameState.started && !gameState.over) {
+        drawProgressBar();
+    }
 }
 
 // Boucle principale du jeu avec Delta Time

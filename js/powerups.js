@@ -1,41 +1,30 @@
 // ===== GESTION DES POWER-UPS =====
 
-// Créer un power-up aléatoire À ÉGALE DISTANCE ENTRE DEUX TUYAUX
+// Créer un power-up À ÉGALE DISTANCE ENTRE LES DEUX DERNIERS TUYAUX
 function createPowerUp() {
     // Ne créer un power-up que s'il y a au moins 2 tuyaux
     if (gameState.pipes.length < 2) return;
-    
+
     const types = Object.keys(POWERUP_TYPES);
     const type = types[Math.floor(Math.random() * types.length)];
     const config = POWERUP_TYPES[type];
 
-    // Trouver deux tuyaux consécutifs
-    let pipe1 = null;
-    let pipe2 = null;
-    
-    for (let i = 0; i < gameState.pipes.length - 1; i++) {
-        const currentPipe = gameState.pipes[i];
-        const nextPipe = gameState.pipes[i + 1];
-        
-        // Vérifier que les deux tuyaux sont devant l'oiseau
-        if (currentPipe.x > gameState.bird.x + 100) {
-            pipe1 = currentPipe;
-            pipe2 = nextPipe;
-            break;
-        }
-    }
-    
-    // Si on n'a pas trouvé deux tuyaux valides, on sort
+    // Prendre les deux derniers tuyaux (les plus récents, à droite de l'écran)
+    const pipe1 = gameState.pipes[gameState.pipes.length - 2]; // Avant-dernier
+    const pipe2 = gameState.pipes[gameState.pipes.length - 1]; // Dernier (vient d'être créé)
+
+    // Si les tuyaux ne sont pas valides, on sort
     if (!pipe1 || !pipe2) return;
-    
+
     // Position X : au milieu entre les deux tuyaux
     const x = pipe1.x + ((pipe2.x - pipe1.x) / 2);
-    
-    // Position Y : au centre de la zone de passage du premier tuyau
-    const gapCenter1 = pipe1.top + (pipe1.gap / 2);
-    const variationY = (Math.random() - 0.5) * (pipe1.gap * 0.3);
-    const y = gapCenter1 + variationY;
-    
+
+    // Position Y : au centre de la zone de passage (gap) du premier tuyau
+    const gapCenter = pipe1.top + (pipe1.gap / 2);
+    // Petite variation aléatoire pour ne pas toujours être au centre exact
+    const variationY = (Math.random() - 0.5) * (pipe1.gap * 0.4);
+    const y = gapCenter + variationY;
+
     // S'assurer que le power-up reste dans une zone jouable
     const minY = 100;
     const maxY = canvas.height - GAME_CONFIG.GROUND_HEIGHT - 100;
@@ -44,11 +33,13 @@ function createPowerUp() {
     gameState.powerUps.push({
         x: x,
         y: safeY,
-        size: 40,
+        size: 50, // Un peu plus gros pour être visible
         type: type,
         config: config,
         rotation: 0
     });
+
+    console.log(`🎁 Power-up créé: ${type} à x=${Math.round(x)}, y=${Math.round(safeY)}`);
 }
 
 // Dessiner les power-ups
@@ -138,20 +129,7 @@ function updatePowerUps(deltaMultiplier = 1) {
             gameState.activePowerUp = null;
         }
     }
-
-    // ✅ CORRECTION : Utiliser un compteur fixe indépendant du FPS
-    // Au lieu de gameState.frameCount, on utilise le temps écoulé
-    gameState.powerUpSpawnAccumulator = (gameState.powerUpSpawnAccumulator || 0) + deltaMultiplier;
-    
-    // Vérifier toutes les "60 frames virtuelles" (1 seconde à 60 FPS)
-    if (gameState.powerUpSpawnAccumulator >= 60) {
-        gameState.powerUpSpawnAccumulator = 0;
-        
-        // 5% de chance de créer un power-up
-        if (Math.random() < 0.05 && gameState.pipes.length >= 2) {
-            createPowerUp();
-        }
-    }
+    // Note: Les powerups sont créés dans game.js tous les 5 tuyaux
 }
 
 // Afficher le power-up actif

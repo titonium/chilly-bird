@@ -4,22 +4,62 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// ✅ RÉSOLUTION FIXE - Identique pour tous
-const FIXED_WIDTH = 1920;
-const FIXED_HEIGHT = 1080;
+// Détecter si on est sur mobile
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+           || window.innerWidth <= 768;
+}
 
-// Redimensionner le canvas avec résolution fixe
+// Détecter l'orientation
+function isPortrait() {
+    return window.innerHeight > window.innerWidth;
+}
+
+// Résolutions adaptatives
+function getResolution() {
+    if (isMobile()) {
+        if (isPortrait()) {
+            // Mobile portrait : résolution verticale
+            return { width: 608, height: 1080 };
+        } else {
+            // Mobile paysage : résolution horizontale réduite
+            return { width: 1280, height: 720 };
+        }
+    } else {
+        // Desktop : résolution standard
+        return { width: 1920, height: 1080 };
+    }
+}
+
+let currentResolution = getResolution();
+let FIXED_WIDTH = currentResolution.width;
+let FIXED_HEIGHT = currentResolution.height;
+
+// Redimensionner le canvas avec résolution adaptative
 function resizeCanvas() {
-    // ✅ Taille logique fixe (ne change jamais)
+    // Recalculer la résolution si l'orientation change
+    const newResolution = getResolution();
+
+    if (newResolution.width !== FIXED_WIDTH || newResolution.height !== FIXED_HEIGHT) {
+        FIXED_WIDTH = newResolution.width;
+        FIXED_HEIGHT = newResolution.height;
+
+        // Recréer les étoiles pour la nouvelle résolution
+        if (typeof createStars === 'function') {
+            createStars();
+        }
+    }
+
+    // Appliquer la résolution au canvas
     canvas.width = FIXED_WIDTH;
     canvas.height = FIXED_HEIGHT;
-    
-    // ✅ Calcul du ratio pour garder les proportions
+
+    // Calcul du ratio pour garder les proportions
     const windowRatio = window.innerWidth / window.innerHeight;
     const canvasRatio = FIXED_WIDTH / FIXED_HEIGHT;
-    
+
     let width, height;
-    
+
     if (windowRatio > canvasRatio) {
         // Fenêtre plus large : limiter par la hauteur
         height = window.innerHeight;
@@ -29,23 +69,35 @@ function resizeCanvas() {
         width = window.innerWidth;
         height = width / canvasRatio;
     }
-    
-    // ✅ Appliquer le scaling CSS (visuel uniquement)
+
+    // Appliquer le scaling CSS
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
-    
+
     // Centrer le canvas
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'flex';
     gameContainer.style.justifyContent = 'center';
     gameContainer.style.alignItems = 'center';
-    
+
+    // Mettre à jour les dimensions du jeu
+    if (typeof updateGameDimensions === 'function') {
+        updateGameDimensions();
+    }
+
     // Position initiale de l'oiseau
-    gameState.bird.y = FIXED_HEIGHT / 2;
+    if (gameState && gameState.bird) {
+        gameState.bird.y = FIXED_HEIGHT / 2;
+    }
+
+    console.log(`📱 Résolution: ${FIXED_WIDTH}x${FIXED_HEIGHT} (${isMobile() ? 'Mobile' : 'Desktop'} ${isPortrait() ? 'Portrait' : 'Paysage'})`);
 }
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+    setTimeout(resizeCanvas, 100); // Délai pour laisser l'orientation se stabiliser
+});
 
 // Empêcher le zoom sur mobile
 document.addEventListener('gesturestart', function(e) {
@@ -77,27 +129,36 @@ document.addEventListener('wheel', function(e) {
     }
 }, { passive: false });
 
+// Charger la version depuis version.json
+async function loadVersion() {
+    try {
+        const response = await fetch('version.json');
+        const data = await response.json();
+        document.getElementById('version').textContent = 'v' + data.version;
+    } catch (error) {
+        console.warn('Impossible de charger la version:', error);
+    }
+}
+
+loadVersion();
+
 // Initialiser Firebase
 initFirebase();
 
 // Créer les étoiles
 createStars();
 
-// Créer les particules de fond
-function createBackgroundParticles() {
-    const particlesContainer = document.getElementById('particles');
-    for (let i = 0; i < 30; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDuration = (Math.random() * 3 + 2) + 's';
-        particle.style.animationDelay = Math.random() * 2 + 's';
-        particle.style.opacity = Math.random() * 0.5 + 0.3;
-        particlesContainer.appendChild(particle);
+// Particules de fond désactivées (effet galaxie dans le canvas)
+
+// Charger le nom du joueur sauvegardé
+function loadSavedPlayerName() {
+    const savedName = localStorage.getItem('chillyBirdPlayerName');
+    if (savedName) {
+        document.getElementById('playerNameStart').value = savedName;
     }
 }
 
-createBackgroundParticles();
+loadSavedPlayerName();
 
 // Afficher les high scores au chargement
 showHighScores();
@@ -155,6 +216,7 @@ gameLoop();
 console.log('%c🎮 CHILLY BIRD 🐦', 'font-size: 24px; color: #00ffff; font-weight: bold;');
 console.log('%c❄️ Jeu chargé avec succès!', 'font-size: 16px; color: #ff00ff;');
 console.log(`%c📐 Résolution fixe: ${FIXED_WIDTH}x${FIXED_HEIGHT}`, 'font-size: 14px; color: #ffbe0b;');
+console.log(`%c📦 Version: ${document.getElementById('version').textContent}`, 'font-size: 14px; color: #00ffff;');
 if (firebaseInitialized) {
     console.log('%c🌐 Scores mondiaux actifs', 'font-size: 14px; color: #00ff88;');
 } else {

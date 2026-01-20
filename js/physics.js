@@ -62,15 +62,21 @@ function updatePipes(deltaMultiplier = 1) {
             gameState.score++;
             document.getElementById('score').textContent = gameState.score;
 
+            // Déclencher l'affichage du boost de vitesse si on passe un palier de 10
+            if (gameState.score % 10 === 0) {
+                triggerSpeedBoost();
+            }
+
             // Son de point marqué
             playScoreSound();
 
-            // Explosion de particules
+            // Explosion de particules avec couleur du thème
+            const theme = getCurrentTheme();
             for (let i = 0; i < 20; i++) {
                 createParticle(
                     gameState.bird.x,
                     gameState.bird.y + gameState.bird.height / 2,
-                    Math.random() > 0.5 ? '#00ffff' : '#ff00ff'
+                    Math.random() > 0.5 ? theme.primary : theme.secondary
                 );
             }
         }
@@ -112,7 +118,12 @@ function checkCollisions() {
 function jump() {
     if (!gameState.started || gameState.over) return;
 
-    gameState.bird.velocity = GAME_CONFIG.BIRD_JUMP_POWER;
+    // Réduire le saut si le powerup SLOW est actif
+    let jumpPower = GAME_CONFIG.BIRD_JUMP_POWER;
+    if (gameState.activePowerUp === 'SLOW') {
+        jumpPower = jumpPower * 0.7; // 30% moins puissant
+    }
+    gameState.bird.velocity = jumpPower;
 
     // Son de saut
     playJumpSound();

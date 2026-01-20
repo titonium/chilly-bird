@@ -138,6 +138,37 @@ async function isHighScore(score) {
     return score > tenthScore;
 }
 
+// Obtenir la position globale d'un score (parmi TOUS les scores)
+async function getGlobalRank(score) {
+    if (!firebaseInitialized) {
+        // Fallback localStorage - pas de classement global disponible
+        return { rank: null, total: 0 };
+    }
+
+    try {
+        // Récupérer tous les scores supérieurs au score actuel
+        const snapshot = await database.ref('highscores')
+            .orderByChild('score')
+            .once('value');
+
+        let total = 0;
+        let betterScores = 0;
+
+        snapshot.forEach(childSnapshot => {
+            total++;
+            if (childSnapshot.val().score > score) {
+                betterScores++;
+            }
+        });
+
+        // La position est le nombre de scores supérieurs + 1
+        return { rank: betterScores + 1, total: total };
+    } catch (error) {
+        console.error('Erreur lors du calcul du rang:', error);
+        return { rank: null, total: 0 };
+    }
+}
+
 // Ajouter un high score
 async function addHighScore(name, score) {
     // Sauvegarder dans Firebase
