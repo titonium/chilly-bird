@@ -10,8 +10,8 @@ const GAME_CONFIG = {
     GROUND_HEIGHT: 80,
     BIRD_WIDTH: 50,
     BIRD_HEIGHT: 40,
-    BIRD_GRAVITY: 0.6,
-    BIRD_JUMP_POWER: -12,
+    BIRD_GRAVITY: 0.5,
+    BIRD_JUMP_POWER: -11,
     STARTING_LIVES: 2,
     PIPE_SPAWN_INTERVAL: 120, // frames
     SPEED_INCREASE_RATE: 0.05, // par point de score
