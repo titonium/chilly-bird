@@ -32,8 +32,8 @@ function createPowerUp() {
     const x = pipe1.x + ((pipe2.x - pipe1.x) / 2);
     
     // Position Y : au centre de la zone de passage du premier tuyau
-    const gapCenter1 = pipe1.top + (gameState.pipeGap / 2);
-    const variationY = (Math.random() - 0.5) * (gameState.pipeGap * 0.3);
+    const gapCenter1 = pipe1.top + (pipe1.gap / 2);
+    const variationY = (Math.random() - 0.5) * (pipe1.gap * 0.3);
     const y = gapCenter1 + variationY;
     
     // S'assurer que le power-up reste dans une zone jouable
@@ -139,9 +139,18 @@ function updatePowerUps(deltaMultiplier = 1) {
         }
     }
 
-    // Créer un nouveau power-up aléatoirement
-    if (gameState.frameCount % 60 === 0 && Math.random() < 0.20 && gameState.pipes.length >= 2) {
-        createPowerUp();
+    // ✅ CORRECTION : Utiliser un compteur fixe indépendant du FPS
+    // Au lieu de gameState.frameCount, on utilise le temps écoulé
+    gameState.powerUpSpawnAccumulator = (gameState.powerUpSpawnAccumulator || 0) + deltaMultiplier;
+    
+    // Vérifier toutes les "60 frames virtuelles" (1 seconde à 60 FPS)
+    if (gameState.powerUpSpawnAccumulator >= 60) {
+        gameState.powerUpSpawnAccumulator = 0;
+        
+        // 5% de chance de créer un power-up
+        if (Math.random() < 0.05 && gameState.pipes.length >= 2) {
+            createPowerUp();
+        }
     }
 }
 

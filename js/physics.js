@@ -1,10 +1,21 @@
 // ===== PHYSIQUE DU JEU =====
 
+// ✅ CORRECTION : Utiliser une hauteur de référence fixe
+const REFERENCE_HEIGHT = 800; // Hauteur de référence pour les calculs
+
 // Créer un tuyau
 function createPipe() {
+    // ✅ Utiliser la hauteur de référence au lieu de canvas.height
+    const effectiveHeight = REFERENCE_HEIGHT;
+    
     const minTop = 100;
-    const maxTop = canvas.height - GAME_CONFIG.GROUND_HEIGHT - gameState.pipeGap - 100;
+    const maxTop = effectiveHeight - GAME_CONFIG.GROUND_HEIGHT - gameState.pipeGap - 100;
     const top = Math.random() * (maxTop - minTop) + minTop;
+
+    // ✅ Adapter au canvas réel avec un ratio
+    const heightRatio = canvas.height / REFERENCE_HEIGHT;
+    const scaledTop = top * heightRatio;
+    const scaledGap = gameState.pipeGap * heightRatio;
 
     // Calculer la probabilité de tuyaux mobiles selon le score
     let movingProbability = 0;
@@ -19,14 +30,14 @@ function createPipe() {
 
     gameState.pipes.push({
         x: canvas.width,
-        top: top,
-        bottom: top + gameState.pipeGap, // ✅ Utilise le gap ACTUEL
-        gap: gameState.pipeGap, // ✅ NOUVEAU : Stocke le gap pour ce tuyau
+        top: scaledTop,
+        bottom: scaledTop + scaledGap,
+        gap: scaledGap,
         passed: false,
         moving: isMoving,
-        moveSpeed: isMoving ? (Math.random() * 2.5 + 1.5) * (Math.random() > 0.5 ? 1 : -1) : 0,
-        originalTop: top,
-        moveRange: 80
+        moveSpeed: isMoving ? (Math.random() * 2.5 + 1.5) * (Math.random() > 0.5 ? 1 : -1) * heightRatio : 0,
+        originalTop: scaledTop,
+        moveRange: 80 * heightRatio
     });
 }
 
@@ -51,7 +62,7 @@ function updatePipes(deltaMultiplier = 1) {
                 pipe.moveSpeed *= -1;
             }
 
-            // ✅ Mettre à jour la position du bas en utilisant le GAP DU TUYAU
+            // Mettre à jour la position du bas en utilisant le GAP DU TUYAU
             pipe.bottom = pipe.top + pipe.gap;
         }
 

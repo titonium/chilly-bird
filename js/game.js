@@ -28,7 +28,8 @@ const gameState = {
     lastTime: 0,
     deltaTime: 0,
     targetFPS: 60,
-    frameInterval: 1000 / 60 // 16.67ms pour 60 FPS
+    frameInterval: 1000 / 60, // 16.67ms pour 60 FPS
+    powerUpSpawnAccumulator: 0 // Accumulateur pour power-ups
 };
 
 // Démarrer le jeu avec le nom du joueur
@@ -62,6 +63,7 @@ function startGame() {
     gameState.powerUpTimer = 0;
     gameState.pipeGap = GAME_CONFIG.BASE_PIPE_GAP;
     gameState.lastTime = performance.now();
+    gameState.powerUpSpawnAccumulator = 0;
 
     // Charger le score sauvegardé ou commencer à 0
     const savedScore = localStorage.getItem('chillyBirdCurrentScore');
@@ -112,7 +114,7 @@ async function showGameOver() {
             <p>Félicitations ${gameState.playerName} !</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="submitScore()">✓ ENREGISTRER</button>
@@ -125,7 +127,7 @@ async function showGameOver() {
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="restart()">🔄 REJOUER</button>

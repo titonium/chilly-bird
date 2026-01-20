@@ -5,13 +5,13 @@
 // Constantes du jeu
 const GAME_CONFIG = {
     PIPE_WIDTH: 80,
-    BASE_PIPE_GAP: 200,
+    BASE_PIPE_GAP: 150,        // ✅ Gap de référence pour hauteur 800px
     BASE_PIPE_SPEED: 4,
     GROUND_HEIGHT: 80,
     BIRD_WIDTH: 50,
     BIRD_HEIGHT: 40,
-    BIRD_GRAVITY: 0.5,
-    BIRD_JUMP_POWER: -11,
+    BIRD_GRAVITY: 0.5,         // Ajusté pour être plus doux
+    BIRD_JUMP_POWER: -11,      // Ajusté pour être plus doux
     STARTING_LIVES: 2,
     PIPE_SPAWN_INTERVAL: 120, // frames
     SPEED_INCREASE_RATE: 0.05, // par point de score
