@@ -106,7 +106,7 @@ async function showGameOver() {
             <p>Félicitations ${gameState.playerName} !</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="submitScore()">✓ ENREGISTRER</button>
@@ -119,7 +119,7 @@ async function showGameOver() {
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="restart()">🔄 REJOUER</button>
