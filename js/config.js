@@ -5,7 +5,7 @@
 // Constantes du jeu
 const GAME_CONFIG = {
     PIPE_WIDTH: 80,
-    BASE_PIPE_GAP: 150,        // ✅ Gap de référence pour hauteur 800px
+    BASE_PIPE_GAP: 200,        // ✅ Gap de référence pour hauteur 800px
     BASE_PIPE_SPEED: 4,
     GROUND_HEIGHT: 80,
     BIRD_WIDTH: 50,

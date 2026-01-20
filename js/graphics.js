@@ -339,8 +339,8 @@ function createStars() {
     gameState.stars = [];
     for (let i = 0; i < 100; i++) {
         gameState.stars.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
+            x: Math.random() * canvas.width,  // ✅ Utilise la largeur fixe
+            y: Math.random() * canvas.height, // ✅ Utilise la hauteur fixe
             speed: Math.random() * 2 + 1,
             size: Math.random() * 2 + 1
         });
