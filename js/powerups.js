@@ -32,9 +32,8 @@ function createPowerUp() {
     const x = pipe1.x + ((pipe2.x - pipe1.x) / 2);
     
     // Position Y : au centre de la zone de passage du premier tuyau
-    // On ajoute une petite variation aléatoire pour ne pas toujours être au centre exact
     const gapCenter1 = pipe1.top + (gameState.pipeGap / 2);
-    const variationY = (Math.random() - 0.5) * (gameState.pipeGap * 0.3); // ±30% du gap
+    const variationY = (Math.random() - 0.5) * (gameState.pipeGap * 0.3);
     const y = gapCenter1 + variationY;
     
     // S'assurer que le power-up reste dans une zone jouable
@@ -92,12 +91,12 @@ function drawPowerUps() {
     });
 }
 
-// Mettre à jour les power-ups
-function updatePowerUps() {
+// Mettre à jour les power-ups avec delta time
+function updatePowerUps(deltaMultiplier = 1) {
     // Déplacer les power-ups
     for (let i = gameState.powerUps.length - 1; i >= 0; i--) {
         const powerUp = gameState.powerUps[i];
-        powerUp.x -= gameState.pipeSpeed;
+        powerUp.x -= gameState.pipeSpeed * deltaMultiplier;
 
         // Vérifier collision avec l'oiseau
         const distance = Math.hypot(
@@ -129,7 +128,7 @@ function updatePowerUps() {
 
     // Gérer les effets des power-ups actifs
     if (gameState.activePowerUp && gameState.powerUpTimer > 0) {
-        gameState.powerUpTimer--;
+        gameState.powerUpTimer -= deltaMultiplier;
 
         if (gameState.powerUpTimer <= 0) {
             // Désactiver le power-up
@@ -140,8 +139,7 @@ function updatePowerUps() {
         }
     }
 
-    // Créer un nouveau power-up aléatoirement (5% de chance toutes les 60 frames)
-    // ET seulement s'il y a assez de tuyaux
+    // Créer un nouveau power-up aléatoirement
     if (gameState.frameCount % 60 === 0 && Math.random() < 0.05 && gameState.pipes.length >= 2) {
         createPowerUp();
     }

@@ -33,7 +33,7 @@ async function getHighScores() {
     try {
         const snapshot = await database.ref('highscores')
             .orderByChild('score')
-            .limitToLast(5)
+            .limitToLast(10)
             .once('value');
         
         const scores = [];
@@ -44,12 +44,12 @@ async function getHighScores() {
         // Inverser pour avoir du plus grand au plus petit
         scores.reverse();
 
-        // Remplir avec des scores vides si moins de 5
-        while (scores.length < 5) {
+        // Remplir avec des scores vides si moins de 10
+        while (scores.length < 10) {
             scores.push({ name: '---', score: 0 });
         }
 
-        return scores;
+        return scores.slice(0, 10); // Retourner max 10 scores
     } catch (error) {
         console.error('Erreur lors de la récupération des scores:', error);
         // Fallback localStorage
@@ -62,25 +62,68 @@ async function getHighScores() {
     }
 }
 
-// Sauvegarder les high scores
-async function saveHighScores(scores) {
-    // Toujours sauvegarder en local aussi
-    localStorage.setItem('chillyBirdScores', JSON.stringify(scores));
-
+// Sauvegarder UN SEUL score dans Firebase
+async function saveScoreToFirebase(name, score) {
     if (!firebaseInitialized) return;
 
     try {
-        // Ne garder que les 10 meilleurs scores dans Firebase
-        const updates = {};
-        scores.slice(0, 10).forEach((scoreEntry, index) => {
-            updates[`highscores/${Date.now()}_${index}`] = scoreEntry;
+        // Créer une clé unique pour ce score
+        const newScoreRef = database.ref('highscores').push();
+        
+        // Sauvegarder le score
+        await newScoreRef.set({
+            name: name.toUpperCase(),
+            score: score,
+            timestamp: Date.now()
         });
 
-        await database.ref().update(updates);
         console.log('✅ Score sauvegardé dans Firebase');
+
+        // Nettoyer : ne garder que les 10 meilleurs scores
+        await cleanupOldScores();
     } catch (error) {
         console.error('❌ Erreur lors de la sauvegarde:', error);
     }
+}
+
+// Nettoyer les anciens scores (garder seulement TOP 10)
+async function cleanupOldScores() {
+    if (!firebaseInitialized) return;
+
+    try {
+        const snapshot = await database.ref('highscores')
+            .orderByChild('score')
+            .once('value');
+        
+        const allScores = [];
+        snapshot.forEach(childSnapshot => {
+            allScores.push({
+                key: childSnapshot.key,
+                data: childSnapshot.val()
+            });
+        });
+
+        // Trier par score décroissant
+        allScores.sort((a, b) => b.data.score - a.data.score);
+
+        // Supprimer tous les scores après le TOP 10
+        const scoresToDelete = allScores.slice(10);
+        
+        for (const scoreItem of scoresToDelete) {
+            await database.ref(`highscores/${scoreItem.key}`).remove();
+        }
+
+        if (scoresToDelete.length > 0) {
+            console.log(`🗑️ ${scoresToDelete.length} ancien(s) score(s) supprimé(s)`);
+        }
+    } catch (error) {
+        console.error('Erreur lors du nettoyage:', error);
+    }
+}
+
+// Sauvegarder les high scores (localStorage uniquement)
+function saveHighScoresToLocal(scores) {
+    localStorage.setItem('chillyBirdScores', JSON.stringify(scores));
 }
 
 // Vérifier si c'est un high score
@@ -90,17 +133,24 @@ async function isHighScore(score) {
     if (highScores[2].score === 0 && score > 0) {
         return true;
     }
-    return score > highScores[2].score;
+    // Accepter si meilleur que le 10ème score
+    const tenthScore = highScores[9] ? highScores[9].score : 0;
+    return score > tenthScore;
 }
 
 // Ajouter un high score
 async function addHighScore(name, score) {
+    // Sauvegarder dans Firebase
+    await saveScoreToFirebase(name, score);
+
+    // Récupérer les scores à jour
     const highScores = await getHighScores();
-    highScores.push({ name: name.toUpperCase(), score: score });
-    highScores.sort((a, b) => b.score - a.score);
-    highScores.splice(10); // Garder top 10
-    await saveHighScores(highScores);
-    await showHighScores(); // Rafraîchir l'affichage
+    
+    // Sauvegarder aussi en local
+    saveHighScoresToLocal(highScores);
+    
+    // Rafraîchir l'affichage
+    await showHighScores();
 }
 
 // Afficher les high scores
@@ -113,7 +163,7 @@ async function showHighScores() {
 
     scoresList.innerHTML = '';
 
-    highScores.slice(0, 5).forEach((entry, index) => {
+    highScores.slice(0, 10).forEach((entry, index) => {
         const div = document.createElement('div');
         div.className = 'scoreEntry';
         div.innerHTML = `

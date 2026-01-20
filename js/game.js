@@ -23,7 +23,12 @@ const gameState = {
     activePowerUp: null,
     powerUpTimer: 0,
     pipeGap: GAME_CONFIG.BASE_PIPE_GAP,
-    pipeSpeed: GAME_CONFIG.BASE_PIPE_SPEED
+    pipeSpeed: GAME_CONFIG.BASE_PIPE_SPEED,
+    // Delta time pour FPS constant
+    lastTime: 0,
+    deltaTime: 0,
+    targetFPS: 60,
+    frameInterval: 1000 / 60 // 16.67ms pour 60 FPS
 };
 
 // Démarrer le jeu avec le nom du joueur
@@ -56,6 +61,7 @@ function startGame() {
     gameState.activePowerUp = null;
     gameState.powerUpTimer = 0;
     gameState.pipeGap = GAME_CONFIG.BASE_PIPE_GAP;
+    gameState.lastTime = performance.now();
 
     // Charger le score sauvegardé ou commencer à 0
     const savedScore = localStorage.getItem('chillyBirdCurrentScore');
@@ -106,7 +112,7 @@ async function showGameOver() {
             <p>Félicitations ${gameState.playerName} !</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="submitScore()">✓ ENREGISTRER</button>
@@ -119,7 +125,7 @@ async function showGameOver() {
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p>Score Final: ${gameState.score}</p>
             <div id="highScoresTable">
-                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
+                <h3>🏆 TOP 3 MONDIAL 🏆</h3>
                 <div id="scoresList"></div>
             </div>
             <button onclick="restart()">🔄 REJOUER</button>
@@ -149,21 +155,21 @@ function restart() {
 }
 
 // Mettre à jour le jeu
-function update() {
+function update(deltaMultiplier) {
     if (!gameState.started || gameState.over) return;
 
     gameState.frameCount++;
 
     // Physique de l'oiseau
-    updateBird();
+    updateBird(deltaMultiplier);
 
     // Mettre à jour les tuyaux
-    updatePipes();
+    updatePipes(deltaMultiplier);
 
     // Mettre à jour les power-ups
-    updatePowerUps();
+    updatePowerUps(deltaMultiplier);
 
-    // Créer de nouveaux tuyaux
+    // Créer de nouveaux tuyaux (basé sur le temps, pas les frames)
     if (gameState.frameCount % GAME_CONFIG.PIPE_SPAWN_INTERVAL === 0) {
         createPipe();
     }
@@ -203,11 +209,25 @@ function draw() {
     drawActivePowerUp();
 }
 
-// Boucle principale du jeu
-function gameLoop() {
-    update();
+// Boucle principale du jeu avec Delta Time
+function gameLoop(currentTime) {
+    // Calculer le delta time
+    if (!gameState.lastTime) {
+        gameState.lastTime = currentTime;
+    }
+    
+    gameState.deltaTime = currentTime - gameState.lastTime;
+    gameState.lastTime = currentTime;
+
+    // Calculer le multiplicateur pour avoir 60 FPS constant
+    // deltaMultiplier = 1.0 à 60 FPS, 0.5 à 120 FPS, 2.0 à 30 FPS
+    const deltaMultiplier = gameState.deltaTime / gameState.frameInterval;
+
+    // Mettre à jour et dessiner
+    update(deltaMultiplier);
     draw();
     updateGameSpeed();
+    
     requestAnimationFrame(gameLoop);
 }
 

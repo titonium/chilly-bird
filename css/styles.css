@@ -219,6 +219,8 @@ button:hover, button:active {
     background: rgba(0, 0, 0, 0.5);
     border-radius: 15px;
     border: 3px solid #ffbe0b;
+    max-height: 50vh;
+    overflow-y: auto;
 }
 
 #highScoresTable h3 {
@@ -231,10 +233,10 @@ button:hover, button:active {
 
 #scoresList {
     font-family: 'Righteous', cursive;
-    font-size: clamp(12px, 3vw, 20px);
+    font-size: clamp(12px, 3vw, 18px);
     color: #fff;
     text-align: left;
-    line-height: 1.8;
+    line-height: 1.6;
 }
 
 .scoreEntry {
@@ -244,11 +246,18 @@ button:hover, button:active {
     margin: 4px 0;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.scoreEntry:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(5px);
 }
 
 .scoreEntry .rank {
     color: #ffbe0b;
     font-weight: bold;
+    min-width: 60px;
 }
 
 .scoreEntry .name {
@@ -260,6 +269,31 @@ button:hover, button:active {
 .scoreEntry .scoreValue {
     color: #ff00ff;
     font-weight: bold;
+}
+
+#firebaseStatus {
+    font-size: clamp(10px, 2vw, 14px);
+    margin-top: 8px;
+    color: #00ffff;
+}
+
+/* Style personnalisé pour la scrollbar */
+#highScoresTable::-webkit-scrollbar {
+    width: 8px;
+}
+
+#highScoresTable::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+#highScoresTable::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #00ffff, #ff00ff);
+    border-radius: 10px;
+}
+
+#highScoresTable::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
 }
 
 #firebaseStatus {
