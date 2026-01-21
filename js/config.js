@@ -6,10 +6,18 @@
 const REFERENCE_WIDTH = 1920;
 const REFERENCE_HEIGHT = 1080;
 
+// Ratios fixes pour le gameplay (basés sur la résolution de référence)
+// Ces valeurs sont des PROPORTIONS pour garantir une difficulté identique sur tous les appareils
+const GAMEPLAY_RATIOS = {
+    PIPE_GAP_RATIO: 150 / 1080,        // 18.5% de la hauteur = espace entre les tuyaux
+    PIPE_GAP_WIDE_RATIO: 280 / 1080,   // 26% de la hauteur = espace avec powerup WIDE
+    PIPE_SPACING_RATIO: 500 / 1920     // 26% de la largeur = distance entre les paires de tuyaux
+};
+
 // Constantes de base du jeu (pour résolution de référence 1920x1080)
 const BASE_CONFIG = {
     PIPE_WIDTH: 80,
-    BASE_PIPE_GAP: 200,
+    BASE_PIPE_GAP: 100,
     BASE_PIPE_SPEED: 5,
     GROUND_HEIGHT: 80,
     BIRD_WIDTH: 50,
@@ -17,7 +25,7 @@ const BASE_CONFIG = {
     BIRD_GRAVITY: 0.4,
     BIRD_JUMP_POWER: -8,
     STARTING_LIVES: 2,
-    PIPE_SPAWN_INTERVAL: 100,
+    PIPE_SPAWN_INTERVAL: 50,
     SPEED_INCREASE_RATE: 0.05,
     MOVING_PIPES_START_SCORE: 5,
     MOVING_PIPES_BASE_PROBABILITY: 0.30,
@@ -25,7 +33,7 @@ const BASE_CONFIG = {
     MOVING_PIPES_MAX_PROBABILITY: 0.90
 };
 
-// Fonction pour obtenir le facteur d'échelle
+// Fonction pour obtenir le facteur d'échelle (pour les éléments visuels uniquement)
 function getScaleFactor() {
     if (typeof FIXED_WIDTH === 'undefined' || typeof FIXED_HEIGHT === 'undefined') {
         return 1;
@@ -39,16 +47,43 @@ function getScaleFactor() {
 // Configuration dynamique qui s'adapte à la résolution
 const GAME_CONFIG = {
     get PIPE_WIDTH() { return Math.round(BASE_CONFIG.PIPE_WIDTH * getScaleFactor()); },
-    get BASE_PIPE_GAP() { return Math.round(BASE_CONFIG.BASE_PIPE_GAP * getScaleFactor()); },
-    get BASE_PIPE_SPEED() { return BASE_CONFIG.BASE_PIPE_SPEED * getScaleFactor(); },
+    // Gap vertical : proportion FIXE de la hauteur de l'écran (identique sur tous les appareils)
+    get BASE_PIPE_GAP() {
+        if (typeof FIXED_HEIGHT === 'undefined') return BASE_CONFIG.BASE_PIPE_GAP;
+        return Math.round(FIXED_HEIGHT * GAMEPLAY_RATIOS.PIPE_GAP_RATIO);
+    },
+    // Gap élargi pour le powerup WIDE
+    get WIDE_PIPE_GAP() {
+        if (typeof FIXED_HEIGHT === 'undefined') return 280;
+        return Math.round(FIXED_HEIGHT * GAMEPLAY_RATIOS.PIPE_GAP_WIDE_RATIO);
+    },
+    get BASE_PIPE_SPEED() {
+        // Vitesse proportionnelle à la HAUTEUR (cohérent avec la physique de l'oiseau)
+        // Ainsi desktop et mobile portrait ont la même vitesse car même hauteur (1080)
+        if (typeof FIXED_HEIGHT === 'undefined') return BASE_CONFIG.BASE_PIPE_SPEED;
+        return BASE_CONFIG.BASE_PIPE_SPEED * (FIXED_HEIGHT / REFERENCE_HEIGHT);
+    },
     get GROUND_HEIGHT() { return Math.round(BASE_CONFIG.GROUND_HEIGHT * getScaleFactor()); },
     get BIRD_WIDTH() { return Math.round(BASE_CONFIG.BIRD_WIDTH * getScaleFactor()); },
     get BIRD_HEIGHT() { return Math.round(BASE_CONFIG.BIRD_HEIGHT * getScaleFactor()); },
-    get BIRD_GRAVITY() { return BASE_CONFIG.BIRD_GRAVITY * getScaleFactor(); },
-    get BIRD_JUMP_POWER() { return BASE_CONFIG.BIRD_JUMP_POWER * getScaleFactor(); },
+    // Gravité et saut proportionnels à la HAUTEUR de l'écran (pas au scale factor minimum)
+    // Cela permet à l'oiseau de couvrir la même proportion verticale sur tous les appareils
+    get BIRD_GRAVITY() {
+        if (typeof FIXED_HEIGHT === 'undefined') return BASE_CONFIG.BIRD_GRAVITY;
+        return BASE_CONFIG.BIRD_GRAVITY * (FIXED_HEIGHT / REFERENCE_HEIGHT);
+    },
+    get BIRD_JUMP_POWER() {
+        if (typeof FIXED_HEIGHT === 'undefined') return BASE_CONFIG.BIRD_JUMP_POWER;
+        return BASE_CONFIG.BIRD_JUMP_POWER * (FIXED_HEIGHT / REFERENCE_HEIGHT);
+    },
     get STARTING_LIVES() { return BASE_CONFIG.STARTING_LIVES; },
-    get PIPE_SPAWN_INTERVAL() { return Math.round(BASE_CONFIG.PIPE_SPAWN_INTERVAL / getScaleFactor()); },
-    get SPEED_INCREASE_RATE() { return BASE_CONFIG.SPEED_INCREASE_RATE * getScaleFactor(); },
+    // Intervalle FIXE en frames (ne dépend plus de la résolution)
+    get PIPE_SPAWN_INTERVAL() { return BASE_CONFIG.PIPE_SPAWN_INTERVAL; },
+    // L'augmentation de vitesse est proportionnelle à la hauteur (cohérent avec BASE_PIPE_SPEED)
+    get SPEED_INCREASE_RATE() {
+        if (typeof FIXED_HEIGHT === 'undefined') return BASE_CONFIG.SPEED_INCREASE_RATE;
+        return BASE_CONFIG.SPEED_INCREASE_RATE * (FIXED_HEIGHT / REFERENCE_HEIGHT);
+    },
     get MOVING_PIPES_START_SCORE() { return BASE_CONFIG.MOVING_PIPES_START_SCORE; },
     get MOVING_PIPES_BASE_PROBABILITY() { return BASE_CONFIG.MOVING_PIPES_BASE_PROBABILITY; },
     get MOVING_PIPES_INCREASE() { return BASE_CONFIG.MOVING_PIPES_INCREASE; },
@@ -118,7 +153,7 @@ const POWERUP_TYPES = {
         effect: () => {
             gameState.activePowerUp = 'WIDE';
             gameState.powerUpTimer = 300;
-            gameState.pipeGap = 280;
+            gameState.pipeGap = GAME_CONFIG.WIDE_PIPE_GAP;
         }
     }
 };

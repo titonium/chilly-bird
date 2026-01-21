@@ -18,6 +18,12 @@ function createPipe() {
 
     const isMoving = Math.random() < movingProbability;
 
+    // Calculer moveRange et moveSpeed proportionnellement à la hauteur de l'écran
+    const baseMoveRange = 80; // valeur de référence pour 1080p
+    const scaledMoveRange = Math.round(baseMoveRange * (canvas.height / 1080));
+    const baseMoveSpeed = Math.random() * 2.5 + 1.5; // vitesse de référence pour 1080p
+    const scaledMoveSpeed = baseMoveSpeed * (canvas.height / 1080);
+
     gameState.pipes.push({
         x: canvas.width,
         top: top,
@@ -25,9 +31,9 @@ function createPipe() {
         gap: gameState.pipeGap,
         passed: false,
         moving: isMoving,
-        moveSpeed: isMoving ? (Math.random() * 2.5 + 1.5) * (Math.random() > 0.5 ? 1 : -1) : 0,
+        moveSpeed: isMoving ? scaledMoveSpeed * (Math.random() > 0.5 ? 1 : -1) : 0,
         originalTop: top,
-        moveRange: 80
+        moveRange: scaledMoveRange
     });
 }
 
