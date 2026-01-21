@@ -307,6 +307,33 @@ button:hover, button:active {
     color: #00ffff;
 }
 
+/* Container pour les deux tableaux de scores */
+.scoresContainer {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.scoresTable {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.scoresTable h4 {
+    font-family: 'Bungee', cursive;
+    font-size: clamp(14px, 3vw, 20px);
+    color: #00ffff;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #00ffff;
+    text-align: center;
+    padding: 8px;
+    background: rgba(0, 255, 255, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
 /* Style personnalisé pour la scrollbar */
 #highScoresTable::-webkit-scrollbar {
     width: 8px;

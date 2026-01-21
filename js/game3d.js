@@ -14,7 +14,8 @@ const game3DState = {
     birdY: 0,
     birdVelocity: 0,
     pipeSpawnAccumulator: 0,
-    lastTime: 0
+    lastTime: 0,
+    playerName: ''
 };
 
 // Constantes 3D
@@ -340,20 +341,28 @@ function game3DLoop(currentTime) {
 // Afficher le game over 3D
 async function show3DGameOver() {
     const messageEl = document.getElementById('message');
-    const funnyMsg = getRandomFunnyMessage();
-    const isHigh = await isHighScore(game3DState.score);
 
-    // Copier le score dans gameState pour la sauvegarde
+    // Utiliser gameState pour getRandomFunnyMessage
     gameState.score = game3DState.score;
-    gameState.playerName = document.getElementById('playerNameStart').value.trim().toUpperCase() || 'JOUEUR';
+    gameState.playerName = game3DState.playerName;
+
+    const funnyMsg = getRandomFunnyMessage();
+    const isHigh = await isHighScore(game3DState.score, '3d');
+
+    // Obtenir la position globale (mode 3D)
+    const rankInfo = await getGlobalRank(game3DState.score, '3d');
+    const rankText = rankInfo.rank
+        ? `<p style="color: #00ffff; font-size: 18px;">📊 Position mondiale 3D : <strong>${rankInfo.rank}${rankInfo.rank === 1 ? 'er' : 'ème'}</strong> sur ${rankInfo.total} joueurs</p>`
+        : '';
 
     if (isHigh) {
         messageEl.innerHTML = `
             <h2>🎉 NOUVEAU RECORD 3D! 🎉</h2>
             <p style="color: #ffbe0b; font-size: 20px; margin: 15px 0;">${funnyMsg}</p>
-            <p>Félicitations ${gameState.playerName} !</p>
+            <p>Félicitations ${game3DState.playerName} !</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${game3DState.score}</strong></p>
-            <button onclick="submitScore()">✓ ENREGISTRER</button>
+            ${rankText}
+            <button onclick="submit3DScore()">✓ ENREGISTRER</button>
             <button onclick="restart()">🔄 MENU</button>
         `;
     } else {
@@ -361,6 +370,7 @@ async function show3DGameOver() {
             <h2>💥 GAME OVER 3D 💥</h2>
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${game3DState.score}</strong></p>
+            ${rankText}
             <button onclick="restart()">🔄 MENU</button>
         `;
     }
@@ -368,8 +378,17 @@ async function show3DGameOver() {
     messageEl.style.display = 'block';
 }
 
+// Soumettre le score 3D
+async function submit3DScore() {
+    console.log('Submitting 3D score:', game3DState.playerName, game3DState.score);
+    await addHighScore(game3DState.playerName, game3DState.score, '3d');
+    restart();
+}
+
 // Démarrer le jeu 3D
 function start3DGame() {
+    // Sauvegarder le nom du joueur
+    game3DState.playerName = document.getElementById('playerNameStart').value.trim().toUpperCase() || 'JOUEUR';
     init3DGame();
     game3DLoop(performance.now());
 }

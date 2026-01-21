@@ -1,11 +1,46 @@
 // ===== PHYSIQUE DU JEU =====
 
+// Position du centre du dernier tuyau créé (pour limiter la distance verticale)
+let lastPipeCenter = null;
+
+// Réinitialiser la position du dernier tuyau (appelé au démarrage du jeu)
+function resetLastPipeCenter() {
+    lastPipeCenter = null;
+}
+
 // Créer un tuyau
 function createPipe() {
     // ✅ Utiliser canvas.height directement (qui est maintenant fixe)
     const minTop = 100;
     const maxTop = canvas.height - GAME_CONFIG.GROUND_HEIGHT - gameState.pipeGap - 100;
-    const top = Math.random() * (maxTop - minTop) + minTop;
+
+    // Calculer la distance verticale maximale autorisée entre deux portes
+    const maxVerticalDistance = canvas.height * GAMEPLAY_RATIOS.MAX_VERTICAL_DISTANCE_RATIO;
+
+    let top;
+
+    if (lastPipeCenter === null) {
+        // Premier tuyau : position aléatoire
+        top = Math.random() * (maxTop - minTop) + minTop;
+    } else {
+        // Tuyaux suivants : limiter la distance par rapport au précédent
+        // Le centre de la porte est à : top + pipeGap/2
+        const lastCenter = lastPipeCenter;
+
+        // Calculer les limites en fonction du tuyau précédent
+        const minCenter = Math.max(minTop + gameState.pipeGap / 2, lastCenter - maxVerticalDistance);
+        const maxCenter = Math.min(maxTop + gameState.pipeGap / 2, lastCenter + maxVerticalDistance);
+
+        // Position aléatoire dans cette plage
+        const newCenter = Math.random() * (maxCenter - minCenter) + minCenter;
+        top = newCenter - gameState.pipeGap / 2;
+
+        // S'assurer que top reste dans les limites absolues
+        top = Math.max(minTop, Math.min(maxTop, top));
+    }
+
+    // Sauvegarder le centre de ce tuyau pour le prochain
+    lastPipeCenter = top + gameState.pipeGap / 2;
 
     // Calculer la probabilité de tuyaux mobiles selon le score
     let movingProbability = 0;

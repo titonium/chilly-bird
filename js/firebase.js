@@ -67,9 +67,22 @@ async function getHighScores(mode = '2d') {
 
 // Sauvegarder UN SEUL score dans Firebase (mode = '2d' ou '3d')
 async function saveScoreToFirebase(name, score, mode = '2d') {
-    if (!firebaseInitialized) return;
+    console.log(`🔥 saveScoreToFirebase: name=${name}, score=${score}, mode=${mode}, firebaseInitialized=${firebaseInitialized}`);
+
+    if (!firebaseInitialized) {
+        console.warn('⚠️ Firebase not initialized, saving to localStorage only');
+        // Sauvegarder en local si Firebase n'est pas disponible
+        const localKey = mode === '3d' ? 'chillyBirdScores3D' : 'chillyBirdScores';
+        let scores = JSON.parse(localStorage.getItem(localKey) || '[]');
+        scores.push({ name: name.toUpperCase(), score: score, timestamp: Date.now() });
+        scores.sort((a, b) => b.score - a.score);
+        scores = scores.slice(0, 10);
+        localStorage.setItem(localKey, JSON.stringify(scores));
+        return;
+    }
 
     const refPath = mode === '3d' ? 'highscores3d' : 'highscores';
+    console.log(`📁 Firebase ref path: ${refPath}`);
 
     try {
         // Créer une clé unique pour ce score
@@ -134,9 +147,9 @@ function saveHighScoresToLocal(scores) {
     localStorage.setItem('chillyBirdScores', JSON.stringify(scores));
 }
 
-// Vérifier si c'est un high score
-async function isHighScore(score) {
-    const highScores = await getHighScores();
+// Vérifier si c'est un high score (mode = '2d' ou '3d')
+async function isHighScore(score, mode = '2d') {
+    const highScores = await getHighScores(mode);
     // Accepter tout score > 0 si les scores sont vides
     if (highScores[2].score === 0 && score > 0) {
         return true;
@@ -147,15 +160,17 @@ async function isHighScore(score) {
 }
 
 // Obtenir la position globale d'un score (parmi TOUS les scores)
-async function getGlobalRank(score) {
+async function getGlobalRank(score, mode = '2d') {
     if (!firebaseInitialized) {
         // Fallback localStorage - pas de classement global disponible
         return { rank: null, total: 0 };
     }
 
+    const refPath = mode === '3d' ? 'highscores3d' : 'highscores';
+
     try {
         // Récupérer tous les scores supérieurs au score actuel
-        const snapshot = await database.ref('highscores')
+        const snapshot = await database.ref(refPath)
             .orderByChild('score')
             .once('value');
 
@@ -177,24 +192,30 @@ async function getGlobalRank(score) {
     }
 }
 
-// Ajouter un high score
-async function addHighScore(name, score) {
+// Ajouter un high score (mode = '2d' ou '3d')
+async function addHighScore(name, score, mode = '2d') {
+    console.log(`📝 addHighScore called: name=${name}, score=${score}, mode=${mode}`);
+
     // Sauvegarder dans Firebase
-    await saveScoreToFirebase(name, score);
+    await saveScoreToFirebase(name, score, mode);
 
     // Récupérer les scores à jour
-    const highScores = await getHighScores();
-    
+    const highScores = await getHighScores(mode);
+
     // Sauvegarder aussi en local
-    saveHighScoresToLocal(highScores);
-    
+    const localKey = mode === '3d' ? 'chillyBirdScores3D' : 'chillyBirdScores';
+    localStorage.setItem(localKey, JSON.stringify(highScores));
+
+    console.log(`✅ Score ${mode} saved successfully`);
+
     // Rafraîchir l'affichage
     await showHighScores();
 }
 
-// Afficher les high scores
+// Afficher les high scores (les deux modes)
 async function showHighScores() {
-    const highScores = await getHighScores();
+    const highScores2D = await getHighScores('2d');
+    const highScores3D = await getHighScores('3d');
     const scoresList = document.getElementById('scoresList');
     const statusEl = document.getElementById('firebaseStatus');
 
@@ -202,7 +223,15 @@ async function showHighScores() {
 
     scoresList.innerHTML = '';
 
-    highScores.slice(0, 10).forEach((entry, index) => {
+    // Créer le conteneur pour les deux tableaux
+    const container = document.createElement('div');
+    container.className = 'scoresContainer';
+
+    // Tableau 2D
+    const table2D = document.createElement('div');
+    table2D.className = 'scoresTable';
+    table2D.innerHTML = '<h4>🎮 MODE 2D</h4>';
+    highScores2D.slice(0, 10).forEach((entry, index) => {
         const div = document.createElement('div');
         div.className = 'scoreEntry';
         div.innerHTML = `
@@ -210,8 +239,27 @@ async function showHighScores() {
             <span class="name">${entry.name}</span>
             <span class="scoreValue">${entry.score}</span>
         `;
-        scoresList.appendChild(div);
+        table2D.appendChild(div);
     });
+    container.appendChild(table2D);
+
+    // Tableau 3D
+    const table3D = document.createElement('div');
+    table3D.className = 'scoresTable';
+    table3D.innerHTML = '<h4>🌐 MODE 3D</h4>';
+    highScores3D.slice(0, 10).forEach((entry, index) => {
+        const div = document.createElement('div');
+        div.className = 'scoreEntry';
+        div.innerHTML = `
+            <span class="rank">#${index + 1}</span>
+            <span class="name">${entry.name}</span>
+            <span class="scoreValue">${entry.score}</span>
+        `;
+        table3D.appendChild(div);
+    });
+    container.appendChild(table3D);
+
+    scoresList.appendChild(container);
 
     // Mettre à jour le statut
     if (statusEl) {

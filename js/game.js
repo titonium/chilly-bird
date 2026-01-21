@@ -100,6 +100,7 @@ function startGame() {
     gameState.pipeSpeed = GAME_CONFIG.BASE_PIPE_SPEED;
     gameState.pipeCount = 0; // Reset du compteur pour les powerups
     resetBackgroundTransition(); // Reset de la transition de fond
+    resetLastPipeCenter(); // Reset de la position du dernier tuyau
 
     // Démarrer la musique si le son est activé
     if (soundEnabled) {
@@ -124,51 +125,41 @@ async function showGameOver() {
     // Message humoristique aléatoire
     const funnyMsg = getRandomFunnyMessage();
 
-    // Vérifier si c'est un high score
-    const isHigh = await isHighScore(gameState.score);
+    // Vérifier si c'est un high score (mode 2D)
+    const isHigh = await isHighScore(gameState.score, '2d');
 
-    // Obtenir la position globale
-    const rankInfo = await getGlobalRank(gameState.score);
+    // Obtenir la position globale (mode 2D)
+    const rankInfo = await getGlobalRank(gameState.score, '2d');
     const rankText = rankInfo.rank
-        ? `<p style="color: #00ffff; font-size: 18px;">📊 Position mondiale : <strong>${rankInfo.rank}${rankInfo.rank === 1 ? 'er' : 'ème'}</strong> sur ${rankInfo.total} joueurs</p>`
+        ? `<p style="color: #00ffff; font-size: 18px;">📊 Position mondiale 2D : <strong>${rankInfo.rank}${rankInfo.rank === 1 ? 'er' : 'ème'}</strong> sur ${rankInfo.total} joueurs</p>`
         : '';
 
     if (isHigh) {
         messageEl.innerHTML = `
-            <h2>🎉 NOUVEAU RECORD! 🎉</h2>
+            <h2>🎉 NOUVEAU RECORD 2D! 🎉</h2>
             <p style="color: #ffbe0b; font-size: 20px; margin: 15px 0;">${funnyMsg}</p>
             <p>Félicitations ${gameState.playerName} !</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${gameState.score}</strong></p>
             ${rankText}
-            <div id="highScoresTable">
-                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
-                <div id="scoresList"></div>
-            </div>
             <button onclick="submitScore()">✓ ENREGISTRER</button>
-            <button onclick="restart()">🔄 REJOUER</button>
+            <button onclick="restart()">🔄 MENU</button>
         `;
-        await showHighScores();
     } else {
         messageEl.innerHTML = `
-            <h2>💥 GAME OVER 💥</h2>
+            <h2>💥 GAME OVER 2D 💥</h2>
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${gameState.score}</strong></p>
             ${rankText}
-            <div id="highScoresTable">
-                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
-                <div id="scoresList"></div>
-            </div>
-            <button onclick="restart()">🔄 REJOUER</button>
+            <button onclick="restart()">🔄 MENU</button>
         `;
-        await showHighScores();
     }
 
     messageEl.style.display = 'block';
 }
 
-// Soumettre le score
+// Soumettre le score (mode 2D)
 async function submitScore() {
-    await addHighScore(gameState.playerName, gameState.score);
+    await addHighScore(gameState.playerName, gameState.score, '2d');
     restart();
 }
 
