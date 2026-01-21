@@ -29,7 +29,8 @@ const gameState = {
     deltaTime: 0,
     targetFPS: 60,
     frameInterval: 1000 / 60, // 16.67ms pour 60 FPS
-    pipeCount: 0 // Compteur de tuyaux pour spawner les powerups tous les 5 tuyaux
+    pipeCount: 0, // Compteur de tuyaux pour spawner les powerups tous les 5 tuyaux
+    pipeSpawnAccumulator: 0 // Accumulateur pour spawn des tuyaux (indépendant du FPS)
 };
 
 // Mettre à jour les dimensions du jeu selon la résolution
@@ -76,6 +77,7 @@ function startGame() {
     gameState.pipeGap = GAME_CONFIG.BASE_PIPE_GAP;
     gameState.lastTime = performance.now();
     gameState.powerUpSpawnAccumulator = 0;
+    gameState.pipeSpawnAccumulator = 0;
 
     // Charger le score sauvegardé ou commencer à 0
     const savedScore = localStorage.getItem('chillyBirdCurrentScore');
@@ -193,8 +195,11 @@ function update(deltaMultiplier) {
     // Mettre à jour les power-ups
     updatePowerUps(deltaMultiplier);
 
-    // Créer de nouveaux tuyaux (basé sur le temps, pas les frames)
-    if (gameState.frameCount % GAME_CONFIG.PIPE_SPAWN_INTERVAL === 0) {
+    // Créer de nouveaux tuyaux (basé sur l'accumulateur ajusté par deltaMultiplier)
+    // Cela garantit un espacement constant indépendamment du FPS du navigateur
+    gameState.pipeSpawnAccumulator += deltaMultiplier;
+    if (gameState.pipeSpawnAccumulator >= GAME_CONFIG.PIPE_SPAWN_INTERVAL) {
+        gameState.pipeSpawnAccumulator -= GAME_CONFIG.PIPE_SPAWN_INTERVAL;
         createPipe();
         gameState.pipeCount++;
 
