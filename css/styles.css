@@ -53,7 +53,7 @@ canvas {
     top: 5px;
     left: 5px;
     font-family: 'Courier New', monospace;
-    font-size: 10px;
+    font-size: 20px;
     color: rgba(0, 255, 255, 0.5);
     text-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
     z-index: 1000;
