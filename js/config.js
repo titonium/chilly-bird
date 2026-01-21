@@ -9,7 +9,7 @@ const REFERENCE_HEIGHT = 1080;
 // Ratios fixes pour le gameplay (basés sur la résolution de référence)
 // Ces valeurs sont des PROPORTIONS pour garantir une difficulté identique sur tous les appareils
 const GAMEPLAY_RATIOS = {
-    PIPE_GAP_RATIO: 150 / 1080,        // 18.5% de la hauteur = espace entre les tuyaux
+    PIPE_GAP_RATIO: 160 / 1080,        // 18.5% de la hauteur = espace entre les tuyaux
     PIPE_GAP_WIDE_RATIO: 280 / 1080,   // 26% de la hauteur = espace avec powerup WIDE
     PIPE_SPACING_RATIO: 500 / 1920     // 26% de la largeur = distance entre les paires de tuyaux
 };
@@ -18,14 +18,14 @@ const GAMEPLAY_RATIOS = {
 const BASE_CONFIG = {
     PIPE_WIDTH: 80,
     BASE_PIPE_GAP: 100,
-    BASE_PIPE_SPEED: 5,
+    BASE_PIPE_SPEED: 3,
     GROUND_HEIGHT: 80,
     BIRD_WIDTH: 50,
     BIRD_HEIGHT: 40,
     BIRD_GRAVITY: 0.4,
     BIRD_JUMP_POWER: -8,
     STARTING_LIVES: 2,
-    PIPE_SPAWN_INTERVAL: 50,
+    PIPE_SPAWN_INTERVAL: 150,
     SPEED_INCREASE_RATE: 0.05,
     MOVING_PIPES_START_SCORE: 5,
     MOVING_PIPES_BASE_PROBABILITY: 0.30,
