@@ -9,7 +9,7 @@ const REFERENCE_HEIGHT = 1080;
 // Ratios fixes pour le gameplay (basés sur la résolution de référence)
 // Ces valeurs sont des PROPORTIONS pour garantir une difficulté identique sur tous les appareils
 const GAMEPLAY_RATIOS = {
-    PIPE_GAP_RATIO: 150 / 1080,        // 18.5% de la hauteur = espace entre les tuyaux
+    PIPE_GAP_RATIO: 160 / 1080,        // 18.5% de la hauteur = espace entre les tuyaux
     PIPE_GAP_WIDE_RATIO: 280 / 1080,   // 26% de la hauteur = espace avec powerup WIDE
     PIPE_SPACING_RATIO: 500 / 1920     // 26% de la largeur = distance entre les paires de tuyaux
 };
