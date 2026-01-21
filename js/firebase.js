@@ -18,11 +18,14 @@ function initFirebase() {
     }
 }
 
-// Récupérer les high scores
-async function getHighScores() {
+// Récupérer les high scores (mode = '2d' ou '3d')
+async function getHighScores(mode = '2d') {
+    const refPath = mode === '3d' ? 'highscores3d' : 'highscores';
+    const localKey = mode === '3d' ? 'chillyBirdScores3D' : 'chillyBirdScores';
+
     if (!firebaseInitialized) {
         // Fallback localStorage
-        const scores = localStorage.getItem('chillyBirdScores');
+        const scores = localStorage.getItem(localKey);
         return scores ? JSON.parse(scores) : [
             { name: '---', score: 0 },
             { name: '---', score: 0 },
@@ -31,11 +34,11 @@ async function getHighScores() {
     }
 
     try {
-        const snapshot = await database.ref('highscores')
+        const snapshot = await database.ref(refPath)
             .orderByChild('score')
             .limitToLast(10)
             .once('value');
-        
+
         const scores = [];
         snapshot.forEach(childSnapshot => {
             scores.push(childSnapshot.val());
@@ -53,7 +56,7 @@ async function getHighScores() {
     } catch (error) {
         console.error('Erreur lors de la récupération des scores:', error);
         // Fallback localStorage
-        const scores = localStorage.getItem('chillyBirdScores');
+        const scores = localStorage.getItem(localKey);
         return scores ? JSON.parse(scores) : [
             { name: '---', score: 0 },
             { name: '---', score: 0 },
@@ -62,39 +65,44 @@ async function getHighScores() {
     }
 }
 
-// Sauvegarder UN SEUL score dans Firebase
-async function saveScoreToFirebase(name, score) {
+// Sauvegarder UN SEUL score dans Firebase (mode = '2d' ou '3d')
+async function saveScoreToFirebase(name, score, mode = '2d') {
     if (!firebaseInitialized) return;
+
+    const refPath = mode === '3d' ? 'highscores3d' : 'highscores';
 
     try {
         // Créer une clé unique pour ce score
-        const newScoreRef = database.ref('highscores').push();
-        
+        const newScoreRef = database.ref(refPath).push();
+
         // Sauvegarder le score
         await newScoreRef.set({
             name: name.toUpperCase(),
             score: score,
+            mode: mode,
             timestamp: Date.now()
         });
 
-        console.log('✅ Score sauvegardé dans Firebase');
+        console.log(`✅ Score ${mode.toUpperCase()} sauvegardé dans Firebase`);
 
         // Nettoyer : ne garder que les 10 meilleurs scores
-        await cleanupOldScores();
+        await cleanupOldScores(mode);
     } catch (error) {
         console.error('❌ Erreur lors de la sauvegarde:', error);
     }
 }
 
 // Nettoyer les anciens scores (garder seulement TOP 10)
-async function cleanupOldScores() {
+async function cleanupOldScores(mode = '2d') {
     if (!firebaseInitialized) return;
 
+    const refPath = mode === '3d' ? 'highscores3d' : 'highscores';
+
     try {
-        const snapshot = await database.ref('highscores')
+        const snapshot = await database.ref(refPath)
             .orderByChild('score')
             .once('value');
-        
+
         const allScores = [];
         snapshot.forEach(childSnapshot => {
             allScores.push({
@@ -108,13 +116,13 @@ async function cleanupOldScores() {
 
         // Supprimer tous les scores après le TOP 10
         const scoresToDelete = allScores.slice(10);
-        
+
         for (const scoreItem of scoresToDelete) {
-            await database.ref(`highscores/${scoreItem.key}`).remove();
+            await database.ref(`${refPath}/${scoreItem.key}`).remove();
         }
 
         if (scoresToDelete.length > 0) {
-            console.log(`🗑️ ${scoresToDelete.length} ancien(s) score(s) supprimé(s)`);
+            console.log(`🗑️ ${scoresToDelete.length} ancien(s) score(s) ${mode.toUpperCase()} supprimé(s)`);
         }
     } catch (error) {
         console.error('Erreur lors du nettoyage:', error);

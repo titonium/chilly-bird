@@ -54,8 +54,12 @@ function startWithName() {
     // Cacher l'écran de bienvenue
     document.getElementById('welcomeScreen').style.display = 'none';
 
-    // Démarrer le jeu
-    startGame();
+    // Démarrer le jeu selon le mode sélectionné
+    if (typeof currentGameMode !== 'undefined' && currentGameMode === '3d') {
+        start3DGame();
+    } else {
+        startGame();
+    }
 }
 
 // Démarrer le jeu
@@ -251,11 +255,17 @@ function draw() {
 
 // Boucle principale du jeu avec Delta Time
 function gameLoop(currentTime) {
+    // Ne pas exécuter si le mode 3D est actif
+    if (typeof game3DActive !== 'undefined' && game3DActive) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     // Calculer le delta time
     if (!gameState.lastTime) {
         gameState.lastTime = currentTime;
     }
-    
+
     gameState.deltaTime = currentTime - gameState.lastTime;
     gameState.lastTime = currentTime;
 

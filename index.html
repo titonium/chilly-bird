@@ -8,7 +8,10 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
+
+    <!-- Three.js pour le mode 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Righteous&display=swap" rel="stylesheet">
     
@@ -30,9 +33,20 @@
         <div id="soundToggle" onclick="toggleSound()">🔊</div>
         <div id="instructions">Cliquez ou ESPACE pour voler 🚀</div>
         
-        <!-- Welcome Screen -->
-        <div id="welcomeScreen">
+        <!-- Menu Principal -->
+        <div id="mainMenu">
             <h2>CHILLY BIRD</h2>
+            <p>🎮 Jeu de vol cyberpunk 🎮</p>
+            <div class="menuButtons">
+                <button onclick="showGameModeScreen('2d')">🎮 JOUER EN 2D</button>
+                <button onclick="showGameModeScreen('3d')">🌐 JOUER EN 3D</button>
+                <button onclick="showScoresScreen()">🏆 SCORES</button>
+            </div>
+        </div>
+
+        <!-- Ecran de sélection du mode de jeu (saisie du nom) -->
+        <div id="welcomeScreen" style="display: none;">
+            <h2>CHILLY BIRD <span id="gameModeLabel">2D</span></h2>
             <p>🎮 Jeu de vol cyberpunk 🎮</p>
             <p>Évitez les obstacles !</p>
             <div id="nameInputStart">
@@ -40,11 +54,18 @@
                 <input type="text" id="playerNameStart" maxlength="10" placeholder="PSEUDO" />
                 <button onclick="startWithName()">▶ DÉMARRER</button>
             </div>
+            <button class="backButton" onclick="backToMainMenu()">◀ RETOUR</button>
+        </div>
+
+        <!-- Ecran des scores -->
+        <div id="scoresScreen" style="display: none;">
+            <h2>🏆 CLASSEMENT 🏆</h2>
             <div id="highScoresTable">
-                <h3>🏆 TOP 10 MONDIAL 🏆</h3>
+                <h3>TOP 10 MONDIAL</h3>
                 <div id="scoresList"></div>
                 <p id="firebaseStatus">Chargement des scores...</p>
             </div>
+            <button class="backButton" onclick="backToMainMenu()">◀ RETOUR</button>
         </div>
         
         <!-- Game Over Screen -->
@@ -61,6 +82,8 @@
     <script src="js/powerups.js"></script>
     <script src="js/physics.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/game3d.js"></script>
+    <script src="js/menu.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

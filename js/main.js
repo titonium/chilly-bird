@@ -195,7 +195,12 @@ canvas.addEventListener('touchstart', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
         e.preventDefault();
-        if (gameState.started && !gameState.over) {
+        // Mode 3D
+        if (typeof game3DActive !== 'undefined' && game3DActive) {
+            jump3D();
+        }
+        // Mode 2D
+        else if (gameState.started && !gameState.over) {
             jump();
         }
     }
@@ -205,6 +210,13 @@ document.addEventListener('keydown', (e) => {
         const welcomeScreen = document.getElementById('welcomeScreen');
         if (welcomeScreen && welcomeScreen.style.display !== 'none') {
             startWithName();
+        }
+    }
+
+    if (e.code === 'Escape') {
+        // Retour au menu principal
+        if (typeof backToMainMenu === 'function') {
+            backToMainMenu();
         }
     }
 });
