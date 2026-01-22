@@ -8,6 +8,7 @@ let movingStars3D = []; // Étoiles permanentes avec traînée
 let backgroundStars3D; // Points statiques de fond
 let game3DActive = false;
 let game3DAnimationId = null;
+let caveWalls = { ground: [], ceiling: [] }; // Décor de grotte
 
 // État du jeu 3D
 const game3DState = {
@@ -28,24 +29,126 @@ const game3DState = {
 
 // Constantes 3D
 const GAME3D_CONFIG = {
-    BIRD_SIZE: 1,
+    BIRD_SIZE: 0.6,          // Taille réduite (était 1)
     PIPE_WIDTH: 2,
     PIPE_GAP: 6,
-    PIPE_SPEED: 0.08,
+    PIPE_SPEED: 0.12,        // Vitesse augmentée (était 0.08)
     GRAVITY: 0.008,
     JUMP_POWER: 0.2,
-    SPAWN_INTERVAL: 150,
+    SPAWN_INTERVAL: 90,      // Fréquence augmentée (était 150)
     WORLD_WIDTH: 30,
     WORLD_HEIGHT: 20
 };
+
+// Créer le décor simple (sol et ciel) avec défilement
+function createCaveWalls() {
+    caveWalls = { ground: [], ceiling: [] };
+    const segmentWidth = 50;
+    const numSegments = 4;
+
+    // Créer les segments de sol
+    for (let i = 0; i < numSegments; i++) {
+        const startX = -30 + i * segmentWidth;
+        createSimpleSegment(startX, segmentWidth, true);  // Sol
+        createSimpleSegment(startX, segmentWidth, false); // Ciel
+    }
+}
+
+// Créer un segment avec bordure ondulée
+function createSimpleSegment(startX, width, isGround) {
+    const segment = new THREE.Group();
+    const baseY = isGround ? -GAME3D_CONFIG.WORLD_HEIGHT / 2 : GAME3D_CONFIG.WORLD_HEIGHT / 2;
+
+    // Couleur selon sol ou ciel
+    const color = isGround ? 0x2d5a27 : 0x1a3a5c;
+    const lineColor = isGround ? 0x44ff44 : 0x4488ff;
+
+    // Créer une forme ondulée avec Shape
+    const shape = new THREE.Shape();
+    const waveHeight = 1.2;
+    const waveFreq = 0.4;
+    const depth = 10;
+
+    // Point de départ
+    shape.moveTo(startX, isGround ? -depth : depth);
+
+    // Tracer la bordure ondulée
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+        const x = startX + (i / steps) * width;
+        const wave = Math.sin((startX * 0.1 + i * 0.5) * waveFreq) * waveHeight;
+        const y = isGround ? wave : -wave;
+        shape.lineTo(x, y);
+    }
+
+    // Fermer la forme
+    shape.lineTo(startX + width, isGround ? -depth : depth);
+    shape.lineTo(startX, isGround ? -depth : depth);
+
+    // Créer la géométrie extrudée
+    const extrudeSettings = { depth: 15, bevelEnabled: false };
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = -7.5;
+    segment.add(mesh);
+
+    // Ligne lumineuse qui suit la vague
+    const linePoints = [];
+    for (let i = 0; i <= steps; i++) {
+        const x = startX + (i / steps) * width;
+        const wave = Math.sin((startX * 0.1 + i * 0.5) * waveFreq) * waveHeight;
+        const y = isGround ? wave : -wave;
+        linePoints.push(new THREE.Vector3(x, y, 0));
+    }
+
+    const lineCurve = new THREE.CatmullRomCurve3(linePoints);
+    const tubeGeom = new THREE.TubeGeometry(lineCurve, 50, 0.12, 8, false);
+    const tubeMat = new THREE.MeshBasicMaterial({ color: lineColor });
+    const tube = new THREE.Mesh(tubeGeom, tubeMat);
+    segment.add(tube);
+
+    segment.position.y = baseY;
+    segment.userData.startX = startX;
+    segment.userData.width = width;
+
+    scene3D.add(segment);
+
+    if (isGround) {
+        caveWalls.ground.push(segment);
+    } else {
+        caveWalls.ceiling.push(segment);
+    }
+}
+
+// Mettre à jour le défilement du décor
+function updateCaveWalls(speed, deltaMultiplier) {
+    const moveAmount = speed * deltaMultiplier;
+
+    ['ground', 'ceiling'].forEach(type => {
+        caveWalls[type].forEach(segment => {
+            segment.position.x -= moveAmount;
+
+            // Recycler le segment s'il sort de l'écran
+            if (segment.position.x + segment.userData.startX + segment.userData.width < -40) {
+                let maxX = -Infinity;
+                caveWalls[type].forEach(s => {
+                    const rightEdge = s.position.x + s.userData.startX + s.userData.width;
+                    if (rightEdge > maxX) maxX = rightEdge;
+                });
+                segment.position.x = maxX - segment.userData.startX;
+            }
+        });
+    });
+}
 
 // Initialiser le jeu 3D
 function init3DGame() {
     const container = document.getElementById('gameContainer');
 
-    // Créer la scène
+    // Créer la scène (ambiance grotte sombre)
     scene3D = new THREE.Scene();
-    scene3D.background = new THREE.Color(0x1a0033);
+    scene3D.background = new THREE.Color(0x0a0a12);
 
     // Créer la caméra
     camera3D = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -234,24 +337,8 @@ function init3DGame() {
 
     scene3D.add(bird3D);
 
-    // Créer le sol (grille néon)
-    const groundGeometry = new THREE.PlaneGeometry(100, 20, 50, 10);
-    const groundMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff00ff,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.3
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -GAME3D_CONFIG.WORLD_HEIGHT / 2;
-    scene3D.add(ground);
-
-    // Créer le plafond (grille néon)
-    const ceiling = new THREE.Mesh(groundGeometry, groundMaterial.clone());
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = GAME3D_CONFIG.WORLD_HEIGHT / 2;
-    scene3D.add(ceiling);
+    // Créer les parois rocheuses de la grotte
+    createCaveWalls();
 
     // Ajouter des particules de fond statiques (étoiles lointaines)
     const starsGeometry = new THREE.BufferGeometry();
@@ -694,7 +781,9 @@ function jump3D() {
     }
 
     if (game3DState.started && !game3DState.over) {
-        game3DState.birdVelocity = GAME3D_CONFIG.JUMP_POWER;
+        // Rebond augmente avec la vitesse (basée sur le score)
+        const speedBonus = 1 + (game3DState.score * 0.015);
+        game3DState.birdVelocity = GAME3D_CONFIG.JUMP_POWER * speedBonus;
         playJumpSound();
     }
 }
@@ -826,6 +915,9 @@ function game3DLoop(currentTime) {
 
         // Mettre à jour les power-ups
         update3DPowerUps(speed, deltaMultiplier);
+
+        // Mettre à jour le décor de la grotte
+        updateCaveWalls(speed, deltaMultiplier);
 
         // Mettre à jour les étoiles mobiles avec traînée
         update3DMovingStars(deltaMultiplier, speed);
