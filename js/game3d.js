@@ -3,6 +3,9 @@
 let scene3D, camera3D, renderer3D;
 let bird3D, pipes3D = [];
 let powerUps3D = [];
+let shootingStars3D = [];
+let movingStars3D = []; // Étoiles permanentes avec traînée
+let backgroundStars3D; // Points statiques de fond
 let game3DActive = false;
 let game3DAnimationId = null;
 
@@ -145,44 +148,89 @@ function init3DGame() {
     beak.position.set(1.6, 0.3, 0);
     bird3D.add(beak);
 
-    // Aile principale (ellipsoïde aplati)
-    const wingGeometry = new THREE.SphereGeometry(0.6, 16, 16);
-    wingGeometry.scale(1.5, 0.2, 1);
+    // Aile droite (forme de plume stylisée)
+    const wingRightGroup = new THREE.Group();
+    wingRightGroup.name = 'wingRight';
+    wingRightGroup.position.set(-0.1, 0.2, 0.5);
+
+    // Plumes principales de l'aile droite
+    const featherGeometry = new THREE.ConeGeometry(0.15, 0.8, 4);
     const wingMaterial = new THREE.MeshPhongMaterial({
         color: 0xff00ff,
         emissive: 0xff00ff,
-        emissiveIntensity: 0.6,
+        emissiveIntensity: 0.7,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.95
     });
-    const wing = new THREE.Mesh(wingGeometry, wingMaterial);
-    wing.position.set(-0.2, 0.3, 0);
-    wing.name = 'wing';
-    bird3D.add(wing);
 
-    // Queue (triangles néon)
-    const tailGeometry = new THREE.ConeGeometry(0.3, 0.8, 4);
+    for (let i = 0; i < 4; i++) {
+        const feather = new THREE.Mesh(featherGeometry, wingMaterial.clone());
+        feather.rotation.x = Math.PI / 2;
+        feather.rotation.z = -0.2 * i;
+        feather.position.set(-0.15 * i, 0, 0.2 * i);
+        feather.scale.set(1 - i * 0.1, 1 - i * 0.15, 1);
+        wingRightGroup.add(feather);
+    }
+
+    // Base de l'aile droite
+    const wingBaseGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    wingBaseGeometry.scale(1.2, 0.5, 0.8);
+    const wingBase = new THREE.Mesh(wingBaseGeometry, wingMaterial);
+    wingRightGroup.add(wingBase);
+
+    bird3D.add(wingRightGroup);
+
+    // Aile gauche (miroir de l'aile droite)
+    const wingLeftGroup = new THREE.Group();
+    wingLeftGroup.name = 'wingLeft';
+    wingLeftGroup.position.set(-0.1, 0.2, -0.5);
+
+    for (let i = 0; i < 4; i++) {
+        const feather = new THREE.Mesh(featherGeometry.clone(), wingMaterial.clone());
+        feather.rotation.x = -Math.PI / 2;
+        feather.rotation.z = -0.2 * i;
+        feather.position.set(-0.15 * i, 0, -0.2 * i);
+        feather.scale.set(1 - i * 0.1, 1 - i * 0.15, 1);
+        wingLeftGroup.add(feather);
+    }
+
+    const wingBaseLeft = new THREE.Mesh(wingBaseGeometry.clone(), wingMaterial.clone());
+    wingLeftGroup.add(wingBaseLeft);
+
+    bird3D.add(wingLeftGroup);
+
+    // Queue (plumes multiples)
+    const tailGroup = new THREE.Group();
+    tailGroup.position.set(-1.1, 0, 0);
+
+    const tailFeatherGeometry = new THREE.ConeGeometry(0.12, 0.7, 4);
     const tailMaterial = new THREE.MeshPhongMaterial({
         color: 0xff00ff,
         emissive: 0xff00ff,
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.6
     });
-    const tail = new THREE.Mesh(tailGeometry, tailMaterial);
-    tail.rotation.z = Math.PI / 2;
-    tail.position.set(-1.3, 0, 0);
-    bird3D.add(tail);
 
-    // Halo lumineux autour de l'oiseau
-    const haloGeometry = new THREE.RingGeometry(1.5, 1.7, 32);
-    const haloMaterial = new THREE.MeshBasicMaterial({
+    for (let i = 0; i < 3; i++) {
+        const tailFeather = new THREE.Mesh(tailFeatherGeometry, tailMaterial.clone());
+        tailFeather.rotation.z = Math.PI / 2 + (i - 1) * 0.2;
+        tailFeather.position.set(-0.2, (i - 1) * 0.15, 0);
+        tailGroup.add(tailFeather);
+    }
+
+    bird3D.add(tailGroup);
+
+    // Traînée lumineuse derrière l'oiseau (remplace le halo)
+    const trailGeometry = new THREE.ConeGeometry(0.3, 1.5, 8);
+    const trailMaterial = new THREE.MeshBasicMaterial({
         color: 0x00ffff,
         transparent: true,
-        opacity: 0.4,
-        side: THREE.DoubleSide
+        opacity: 0.4
     });
-    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
-    halo.name = 'halo';
-    bird3D.add(halo);
+    const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+    trail.rotation.z = Math.PI / 2;
+    trail.position.set(-1.8, 0, 0);
+    trail.name = 'trail';
+    bird3D.add(trail);
 
     scene3D.add(bird3D);
 
@@ -205,9 +253,9 @@ function init3DGame() {
     ceiling.position.y = GAME3D_CONFIG.WORLD_HEIGHT / 2;
     scene3D.add(ceiling);
 
-    // Ajouter des particules de fond (étoiles)
+    // Ajouter des particules de fond statiques (étoiles lointaines)
     const starsGeometry = new THREE.BufferGeometry();
-    const starsCount = 1000;
+    const starsCount = 500;
     const positions = new Float32Array(starsCount * 3);
     for (let i = 0; i < starsCount * 3; i += 3) {
         positions[i] = (Math.random() - 0.5) * 200;
@@ -215,9 +263,12 @@ function init3DGame() {
         positions[i + 2] = (Math.random() - 0.5) * 100 - 50;
     }
     starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 });
-    const stars = new THREE.Points(starsGeometry, starsMaterial);
-    scene3D.add(stars);
+    const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15 });
+    backgroundStars3D = new THREE.Points(starsGeometry, starsMaterial);
+    scene3D.add(backgroundStars3D);
+
+    // Créer les étoiles mobiles avec traînée (comme en 2D)
+    create3DMovingStars();
 
     // Réinitialiser l'état
     reset3DGame();
@@ -279,6 +330,17 @@ function reset3DGame() {
     });
     powerUps3D = [];
 
+    // Supprimer les anciennes étoiles filantes
+    shootingStars3D.forEach(star => {
+        scene3D.remove(star.mesh);
+    });
+    shootingStars3D = [];
+
+    // Réinitialiser les positions des étoiles mobiles
+    movingStars3D.forEach(star => {
+        star.mesh.position.x = (Math.random() - 0.5) * 80;
+    });
+
     document.getElementById('score').textContent = '0';
     document.getElementById('lives').textContent = '❤️ ' + game3DState.lives;
 }
@@ -303,25 +365,73 @@ function create3DPipe() {
     const colorScheme = colors[scoreLevel];
 
     // === TUYAU DU HAUT ===
-    // Corps principal (cylindre hexagonal pour effet tech)
+    // Corps principal avec dégradé horizontal (secondary → accent → secondary)
+    const topPipeGroup = new THREE.Group();
+
+    // Cylindre principal avec couleur secondary
     const topGeometry = new THREE.CylinderGeometry(
         GAME3D_CONFIG.PIPE_WIDTH / 2,
         GAME3D_CONFIG.PIPE_WIDTH / 2,
         pipeHeight,
-        6
+        12
     );
+
+    // Appliquer le dégradé horizontal via vertex colors
+    const topColors = [];
+    const positionAttribute = topGeometry.getAttribute('position');
+    for (let i = 0; i < positionAttribute.count; i++) {
+        const x = positionAttribute.getX(i);
+        const z = positionAttribute.getZ(i);
+        // Calculer l'angle autour du cylindre
+        const angle = Math.atan2(z, x);
+        // Dégradé: accent au "centre" (face caméra), secondary sur les côtés
+        const t = (Math.cos(angle) + 1) / 2; // 0 à 1, max face caméra
+
+        const r1 = (colorScheme.secondary >> 16) & 255;
+        const g1 = (colorScheme.secondary >> 8) & 255;
+        const b1 = colorScheme.secondary & 255;
+        const r2 = (colorScheme.accent >> 16) & 255;
+        const g2 = (colorScheme.accent >> 8) & 255;
+        const b2 = colorScheme.accent & 255;
+
+        const r = (r1 + (r2 - r1) * t) / 255;
+        const g = (g1 + (g2 - g1) * t) / 255;
+        const b = (b1 + (b2 - b1) * t) / 255;
+
+        topColors.push(r, g, b);
+    }
+    topGeometry.setAttribute('color', new THREE.Float32BufferAttribute(topColors, 3));
+
     const pipeMaterial = new THREE.MeshPhongMaterial({
-        color: colorScheme.main,
+        vertexColors: true,
         emissive: colorScheme.main,
-        emissiveIntensity: 0.2,
+        emissiveIntensity: 0.3,
         transparent: true,
-        opacity: 0.85,
-        flatShading: true
+        opacity: 0.9,
+        shininess: 80
     });
-    const topPipe = new THREE.Mesh(topGeometry, pipeMaterial);
-    topPipe.position.x = 20;
-    topPipe.position.y = gapCenter + gapSize / 2 + pipeHeight / 2;
-    scene3D.add(topPipe);
+
+    const topPipeMesh = new THREE.Mesh(topGeometry, pipeMaterial);
+    topPipeGroup.add(topPipeMesh);
+
+    // Lignes lumineuses horizontales
+    for (let i = 0; i < 4; i++) {
+        const lineGeometry = new THREE.TorusGeometry(GAME3D_CONFIG.PIPE_WIDTH / 2 + 0.02, 0.03, 8, 24);
+        const lineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.5
+        });
+        const line = new THREE.Mesh(lineGeometry, lineMaterial);
+        line.rotation.x = Math.PI / 2;
+        line.position.y = -pipeHeight / 2 + pipeHeight * (i + 1) / 5;
+        topPipeGroup.add(line);
+    }
+
+    topPipeGroup.position.x = 20;
+    topPipeGroup.position.y = gapCenter + gapSize / 2 + pipeHeight / 2;
+    scene3D.add(topPipeGroup);
+    const topPipe = topPipeGroup;
 
     // Anneau lumineux en bas du tuyau du haut (entrée du portail)
     const topRingGeometry = new THREE.TorusGeometry(GAME3D_CONFIG.PIPE_WIDTH / 2 + 0.3, 0.15, 8, 32);
@@ -354,27 +464,71 @@ function create3DPipe() {
     topGlow.position.y = gapCenter + gapSize / 2 - 0.1;
     scene3D.add(topGlow);
 
-    // Lignes décoratives sur le tuyau du haut
-    const linesMaterialTop = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+    // === TUYAU DU BAS ===
+    const bottomPipeGroup = new THREE.Group();
+
+    // Cylindre principal avec dégradé horizontal
+    const bottomGeometry = new THREE.CylinderGeometry(
+        GAME3D_CONFIG.PIPE_WIDTH / 2,
+        GAME3D_CONFIG.PIPE_WIDTH / 2,
+        pipeHeight,
+        12
+    );
+
+    // Appliquer le dégradé horizontal via vertex colors
+    const bottomColors = [];
+    const bottomPosAttr = bottomGeometry.getAttribute('position');
+    for (let i = 0; i < bottomPosAttr.count; i++) {
+        const x = bottomPosAttr.getX(i);
+        const z = bottomPosAttr.getZ(i);
+        const angle = Math.atan2(z, x);
+        const t = (Math.cos(angle) + 1) / 2;
+
+        const r1 = (colorScheme.secondary >> 16) & 255;
+        const g1 = (colorScheme.secondary >> 8) & 255;
+        const b1 = colorScheme.secondary & 255;
+        const r2 = (colorScheme.accent >> 16) & 255;
+        const g2 = (colorScheme.accent >> 8) & 255;
+        const b2 = colorScheme.accent & 255;
+
+        const r = (r1 + (r2 - r1) * t) / 255;
+        const g = (g1 + (g2 - g1) * t) / 255;
+        const b = (b1 + (b2 - b1) * t) / 255;
+
+        bottomColors.push(r, g, b);
+    }
+    bottomGeometry.setAttribute('color', new THREE.Float32BufferAttribute(bottomColors, 3));
+
+    const bottomPipeMaterial = new THREE.MeshPhongMaterial({
+        vertexColors: true,
+        emissive: colorScheme.main,
+        emissiveIntensity: 0.3,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.9,
+        shininess: 80
     });
-    for (let i = 0; i < 3; i++) {
-        const lineGeometry = new THREE.TorusGeometry(GAME3D_CONFIG.PIPE_WIDTH / 2 + 0.05, 0.05, 8, 32);
-        const line = new THREE.Mesh(lineGeometry, linesMaterialTop);
+
+    const bottomPipeMesh = new THREE.Mesh(bottomGeometry, bottomPipeMaterial);
+    bottomPipeGroup.add(bottomPipeMesh);
+
+    // Lignes lumineuses horizontales
+    for (let i = 0; i < 4; i++) {
+        const lineGeometry = new THREE.TorusGeometry(GAME3D_CONFIG.PIPE_WIDTH / 2 + 0.02, 0.03, 8, 24);
+        const lineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.5
+        });
+        const line = new THREE.Mesh(lineGeometry, lineMaterial);
         line.rotation.x = Math.PI / 2;
-        line.position.x = 20;
-        line.position.y = gapCenter + gapSize / 2 + 2 + i * 4;
-        topPipe.add(line);
-        line.position.set(0, -pipeHeight/2 + 2 + i * 4, 0);
+        line.position.y = -pipeHeight / 2 + pipeHeight * (i + 1) / 5;
+        bottomPipeGroup.add(line);
     }
 
-    // === TUYAU DU BAS ===
-    const bottomPipe = new THREE.Mesh(topGeometry.clone(), pipeMaterial.clone());
-    bottomPipe.position.x = 20;
-    bottomPipe.position.y = gapCenter - gapSize / 2 - pipeHeight / 2;
-    scene3D.add(bottomPipe);
+    bottomPipeGroup.position.x = 20;
+    bottomPipeGroup.position.y = gapCenter - gapSize / 2 - pipeHeight / 2;
+    scene3D.add(bottomPipeGroup);
+    const bottomPipe = bottomPipeGroup;
 
     // Anneau lumineux en haut du tuyau du bas
     const bottomRing = new THREE.Mesh(topRingGeometry.clone(), ringMaterial.clone());
@@ -389,15 +543,6 @@ function create3DPipe() {
     bottomGlow.position.x = 20;
     bottomGlow.position.y = gapCenter - gapSize / 2 + 0.1;
     scene3D.add(bottomGlow);
-
-    // Lignes décoratives sur le tuyau du bas
-    for (let i = 0; i < 3; i++) {
-        const lineGeometry = new THREE.TorusGeometry(GAME3D_CONFIG.PIPE_WIDTH / 2 + 0.05, 0.05, 8, 32);
-        const line = new THREE.Mesh(lineGeometry, linesMaterialTop.clone());
-        line.rotation.x = Math.PI / 2;
-        bottomPipe.add(line);
-        line.position.set(0, pipeHeight/2 - 2 - i * 4, 0);
-    }
 
     game3DState.pipeCount++;
 
@@ -601,17 +746,25 @@ function game3DLoop(currentTime) {
         // Rotation de l'oiseau selon la vélocité
         bird3D.rotation.z = game3DState.birdVelocity * 2;
 
-        // Animation de l'aile
-        const wing = bird3D.getObjectByName('wing');
-        if (wing) {
-            wing.rotation.z = Math.sin(currentTime * 0.015) * 0.5;
-            wing.position.y = 0.3 + Math.sin(currentTime * 0.015) * 0.2;
+        // Animation des ailes (battement)
+        const wingRight = bird3D.getObjectByName('wingRight');
+        const wingLeft = bird3D.getObjectByName('wingLeft');
+        const wingAngle = Math.sin(currentTime * 0.02) * 0.6;
+
+        if (wingRight) {
+            wingRight.rotation.x = wingAngle;
+            wingRight.position.y = 0.2 + Math.sin(currentTime * 0.02) * 0.15;
+        }
+        if (wingLeft) {
+            wingLeft.rotation.x = -wingAngle;
+            wingLeft.position.y = 0.2 + Math.sin(currentTime * 0.02) * 0.15;
         }
 
-        // Rotation du halo
-        const halo = bird3D.getObjectByName('halo');
-        if (halo) {
-            halo.rotation.z += 0.02 * deltaMultiplier;
+        // Animation de la traînée
+        const trail = bird3D.getObjectByName('trail');
+        if (trail) {
+            trail.material.opacity = 0.3 + Math.abs(game3DState.birdVelocity) * 0.5;
+            trail.scale.x = 1 + Math.abs(game3DState.birdVelocity) * 2;
         }
 
         // Spawn des tuyaux
@@ -673,6 +826,17 @@ function game3DLoop(currentTime) {
 
         // Mettre à jour les power-ups
         update3DPowerUps(speed, deltaMultiplier);
+
+        // Mettre à jour les étoiles mobiles avec traînée
+        update3DMovingStars(deltaMultiplier, speed);
+
+        // Mettre à jour les étoiles filantes occasionnelles
+        update3DShootingStars(deltaMultiplier, speed);
+
+        // Créer de nouvelles étoiles filantes occasionnellement
+        if (Math.random() < 0.008) {
+            create3DShootingStar();
+        }
 
         // Gérer les effets des power-ups actifs
         if (game3DState.activePowerUp && game3DState.powerUpTimer > 0) {
@@ -909,6 +1073,227 @@ function draw3DActivePowerUp() {
     }
 }
 
+// Créer les étoiles mobiles avec traînée (3 couches comme en 2D)
+function create3DMovingStars() {
+    movingStars3D = [];
+
+    // Couleurs réalistes d'étoiles
+    const starColors = [0xffffff, 0xcad7ff, 0xfff4e8, 0xffd2a1, 0xffcccc, 0xaaccff];
+
+    // Layer 0: Étoiles de fond lentes (petites)
+    for (let i = 0; i < 80; i++) {
+        const starGroup = new THREE.Group();
+        const x = (Math.random() - 0.5) * 80;
+        const y = (Math.random() - 0.5) * GAME3D_CONFIG.WORLD_HEIGHT * 1.5;
+        const z = -10 - Math.random() * 40;
+
+        starGroup.position.set(x, y, z);
+
+        const starGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+        const starMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.4 + Math.random() * 0.3
+        });
+        const star = new THREE.Mesh(starGeometry, starMaterial);
+        starGroup.add(star);
+
+        scene3D.add(starGroup);
+        movingStars3D.push({
+            mesh: starGroup,
+            speed: 0.02 + Math.random() * 0.03,
+            layer: 0,
+            baseOpacity: 0.4 + Math.random() * 0.3,
+            twinklePhase: Math.random() * Math.PI * 2,
+            twinkleSpeed: 0.02 + Math.random() * 0.02
+        });
+    }
+
+    // Layer 1: Étoiles moyennes colorées
+    for (let i = 0; i < 50; i++) {
+        const starGroup = new THREE.Group();
+        const x = (Math.random() - 0.5) * 80;
+        const y = (Math.random() - 0.5) * GAME3D_CONFIG.WORLD_HEIGHT * 1.5;
+        const z = -5 - Math.random() * 25;
+
+        starGroup.position.set(x, y, z);
+
+        const color = starColors[Math.floor(Math.random() * starColors.length)];
+        const starGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        const starMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.5 + Math.random() * 0.3
+        });
+        const star = new THREE.Mesh(starGeometry, starMaterial);
+        starGroup.add(star);
+
+        scene3D.add(starGroup);
+        movingStars3D.push({
+            mesh: starGroup,
+            speed: 0.04 + Math.random() * 0.06,
+            layer: 1,
+            baseOpacity: 0.5 + Math.random() * 0.3,
+            twinklePhase: Math.random() * Math.PI * 2,
+            twinkleSpeed: 0.04 + Math.random() * 0.04
+        });
+    }
+
+    // Layer 2: Étoiles rapides avec traînée
+    for (let i = 0; i < 25; i++) {
+        const starGroup = new THREE.Group();
+        const x = (Math.random() - 0.5) * 80;
+        const y = (Math.random() - 0.5) * GAME3D_CONFIG.WORLD_HEIGHT * 1.2;
+        const z = -2 - Math.random() * 15;
+
+        starGroup.position.set(x, y, z);
+
+        // Tête de l'étoile
+        const headGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const headMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.95
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        starGroup.add(head);
+
+        // Traînée de l'étoile (plusieurs segments)
+        const trailLength = 0.8 + Math.random() * 0.6;
+        for (let j = 1; j <= 6; j++) {
+            const segmentGeometry = new THREE.SphereGeometry(0.08 * (1 - j * 0.12), 6, 6);
+            const segmentMaterial = new THREE.MeshBasicMaterial({
+                color: j < 3 ? 0xffffff : 0xaaccff,
+                transparent: true,
+                opacity: 0.8 - j * 0.12
+            });
+            const segment = new THREE.Mesh(segmentGeometry, segmentMaterial);
+            segment.position.x = j * (trailLength / 6);
+            starGroup.add(segment);
+        }
+
+        scene3D.add(starGroup);
+        movingStars3D.push({
+            mesh: starGroup,
+            speed: 0.15 + Math.random() * 0.2,
+            layer: 2,
+            baseOpacity: 0.95,
+            twinklePhase: 0,
+            twinkleSpeed: 0
+        });
+    }
+}
+
+// Mettre à jour les étoiles mobiles
+function update3DMovingStars(deltaMultiplier, gameSpeed) {
+    const baseSpeed = gameSpeed || 0.08;
+
+    movingStars3D.forEach(star => {
+        // Déplacer l'étoile vers la gauche
+        star.mesh.position.x -= star.speed * deltaMultiplier * (baseSpeed / 0.08);
+
+        // Réapparaître à droite si sortie de l'écran
+        if (star.mesh.position.x < -50) {
+            star.mesh.position.x = 50 + Math.random() * 20;
+            star.mesh.position.y = (Math.random() - 0.5) * GAME3D_CONFIG.WORLD_HEIGHT * 1.5;
+        }
+
+        // Scintillement pour les layers 0 et 1
+        if (star.twinkleSpeed > 0) {
+            star.twinklePhase += star.twinkleSpeed * deltaMultiplier;
+            const twinkle = 0.7 + 0.3 * Math.sin(star.twinklePhase);
+            if (star.mesh.children[0] && star.mesh.children[0].material) {
+                star.mesh.children[0].material.opacity = star.baseOpacity * twinkle;
+            }
+        }
+    });
+}
+
+// Créer une étoile filante 3D
+function create3DShootingStar() {
+    if (shootingStars3D.length >= 3) return; // Maximum 3 étoiles à la fois
+
+    const starGroup = new THREE.Group();
+
+    // Position de départ (côté droit, hauteur aléatoire)
+    const startX = 30 + Math.random() * 20;
+    const startY = (Math.random() - 0.3) * GAME3D_CONFIG.WORLD_HEIGHT;
+    const startZ = -20 - Math.random() * 30;
+
+    starGroup.position.set(startX, startY, startZ);
+
+    // Tête de l'étoile (brillante)
+    const headGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+    const headMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 1
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    starGroup.add(head);
+
+    // Traînée de l'étoile (plusieurs segments)
+    const trailLength = 8 + Math.random() * 6;
+    for (let i = 1; i <= 10; i++) {
+        const segmentGeometry = new THREE.SphereGeometry(0.12 * (1 - i * 0.08), 6, 6);
+        const segmentMaterial = new THREE.MeshBasicMaterial({
+            color: i < 4 ? 0xaaccff : 0x6688cc,
+            transparent: true,
+            opacity: 1 - i * 0.09
+        });
+        const segment = new THREE.Mesh(segmentGeometry, segmentMaterial);
+        segment.position.set(i * (trailLength / 10), i * 0.1, 0);
+        starGroup.add(segment);
+    }
+
+    // Lueur autour de la tête
+    const glowGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xaaddff,
+        transparent: true,
+        opacity: 0.4
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    starGroup.add(glow);
+
+    scene3D.add(starGroup);
+
+    shootingStars3D.push({
+        mesh: starGroup,
+        speed: 0.3 + Math.random() * 0.4,
+        angle: Math.PI + (Math.random() - 0.5) * 0.4, // Vers la gauche avec légère variation
+        life: 1.0
+    });
+}
+
+// Mettre à jour les étoiles filantes 3D
+function update3DShootingStars(deltaMultiplier, gameSpeed) {
+    for (let i = shootingStars3D.length - 1; i >= 0; i--) {
+        const star = shootingStars3D[i];
+
+        // Mouvement
+        const moveSpeed = star.speed * deltaMultiplier * 2;
+        star.mesh.position.x += Math.cos(star.angle) * moveSpeed;
+        star.mesh.position.y += Math.sin(star.angle) * moveSpeed * 0.3;
+
+        // Diminuer la vie
+        star.life -= 0.008 * deltaMultiplier;
+
+        // Mettre à jour l'opacité de tous les enfants
+        star.mesh.children.forEach((child, index) => {
+            if (child.material) {
+                child.material.opacity = star.life * (1 - index * 0.08);
+            }
+        });
+
+        // Supprimer si hors écran ou vie épuisée
+        if (star.life <= 0 || star.mesh.position.x < -50) {
+            scene3D.remove(star.mesh);
+            shootingStars3D.splice(i, 1);
+        }
+    }
+}
+
 // Arrêter le jeu 3D
 function stop3DGame() {
     game3DActive = false;
@@ -943,6 +1328,9 @@ function stop3DGame() {
     bird3D = null;
     pipes3D = [];
     powerUps3D = [];
+    shootingStars3D = [];
+    movingStars3D = [];
+    backgroundStars3D = null;
 
     window.removeEventListener('resize', on3DResize);
 }
