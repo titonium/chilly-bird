@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start \"\" \"C:\\\\Users\\\\Nicolas\\\\eclipse-workspace\\\\git\\\\chilly-bird\\\\index.html\")"
+    ]
+  }
+}
