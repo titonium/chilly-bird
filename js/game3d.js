@@ -24,7 +24,13 @@ const game3DState = {
     pipeCount: 0,
     activePowerUp: null,
     powerUpTimer: 0,
-    currentPipeGap: 6
+    currentPipeGap: 6,
+    // Tracking du meilleur score pour l'effet de feu
+    currentHighScore: 0,
+    currentHighScoreHolder: '',
+    isOnFire: false,
+    fireMessageTimer: 0,
+    topScores: [] // Top 10 scores pour les indicateurs sur tuyaux
 };
 
 // Constantes 3D
@@ -381,6 +387,77 @@ function on3DResize() {
     renderer3D.setSize(window.innerWidth, window.innerHeight);
 }
 
+// Activer l'effet de feu sur l'oiseau 3D
+function activateFireEffect3D() {
+    if (!bird3D) return;
+
+    // Changer les couleurs de l'oiseau en orange/rouge
+    bird3D.traverse((child) => {
+        if (child.isMesh && child.material) {
+            if (child.material.color) {
+                // Corps et tête -> orange
+                if (child.material.color.getHex() === 0x00ffff) {
+                    child.material.color.setHex(0xff6600);
+                    child.material.emissive.setHex(0xff4400);
+                }
+                // Ailes -> rouge
+                if (child.material.color.getHex() === 0xff00ff) {
+                    child.material.color.setHex(0xff2200);
+                    child.material.emissive.setHex(0xff0000);
+                }
+            }
+        }
+    });
+
+    // Ajouter des flammes derrière l'oiseau
+    const flameGroup = new THREE.Group();
+    flameGroup.name = 'fireEffect';
+
+    for (let i = 0; i < 5; i++) {
+        const flameGeometry = new THREE.ConeGeometry(0.15 + i * 0.05, 0.8 + i * 0.3, 8);
+        const flameMaterial = new THREE.MeshBasicMaterial({
+            color: i < 2 ? 0xffff00 : (i < 4 ? 0xff8800 : 0xff4400),
+            transparent: true,
+            opacity: 0.8 - i * 0.1
+        });
+        const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+        flame.rotation.z = Math.PI / 2;
+        flame.position.set(-1.5 - i * 0.4, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+        flame.name = `flame${i}`;
+        flameGroup.add(flame);
+    }
+
+    bird3D.add(flameGroup);
+
+    // Ajouter une lumière de feu
+    const fireLight = new THREE.PointLight(0xff4400, 2, 10);
+    fireLight.position.set(-1, 0, 0);
+    fireLight.name = 'fireLight';
+    bird3D.add(fireLight);
+}
+
+// Mettre à jour l'effet de feu (animation des flammes)
+function updateFireEffect3D(currentTime) {
+    if (!game3DState.isOnFire || !bird3D) return;
+
+    const fireEffect = bird3D.getObjectByName('fireEffect');
+    if (fireEffect) {
+        fireEffect.children.forEach((flame, i) => {
+            // Animation des flammes
+            flame.position.y = Math.sin(currentTime * 0.01 + i) * 0.2;
+            flame.position.z = Math.cos(currentTime * 0.015 + i * 0.5) * 0.15;
+            flame.scale.x = 1 + Math.sin(currentTime * 0.02 + i) * 0.3;
+            flame.scale.y = 1 + Math.sin(currentTime * 0.025 + i) * 0.2;
+        });
+    }
+
+    // Pulsation de la lumière
+    const fireLight = bird3D.getObjectByName('fireLight');
+    if (fireLight) {
+        fireLight.intensity = 1.5 + Math.sin(currentTime * 0.01) * 0.5;
+    }
+}
+
 // Réinitialiser le jeu 3D
 function reset3DGame() {
     game3DState.started = false;
@@ -395,6 +472,8 @@ function reset3DGame() {
     game3DState.activePowerUp = null;
     game3DState.powerUpTimer = 0;
     game3DState.currentPipeGap = GAME3D_CONFIG.PIPE_GAP;
+    game3DState.isOnFire = false;
+    game3DState.fireMessageTimer = 0;
 
     if (bird3D) {
         bird3D.position.y = 0;
@@ -642,6 +721,28 @@ function create3DPipe() {
         });
     }
 
+    // Calculer le score que ce tuyau représente
+    const pipesNotPassed = pipes3D.filter(p => !p.passed).length;
+    const pipeScore = game3DState.score + pipesNotPassed + 1;
+
+    // Vérifier si ce score correspond à un score du top 10
+    let scoreIndicator = null;
+    let indicatorMesh = null;
+    if (game3DState.topScores && game3DState.topScores.length > 0) {
+        for (let i = 0; i < game3DState.topScores.length; i++) {
+            if (game3DState.topScores[i].score === pipeScore) {
+                scoreIndicator = {
+                    name: game3DState.topScores[i].name,
+                    score: game3DState.topScores[i].score,
+                    rank: i + 1
+                };
+                // Créer un indicateur 3D
+                indicatorMesh = create3DScoreIndicator(20, gapCenter, scoreIndicator);
+                break;
+            }
+        }
+    }
+
     pipes3D.push({
         top: topPipe,
         bottom: bottomPipe,
@@ -651,8 +752,128 @@ function create3DPipe() {
         bottomGlow: bottomGlow,
         gapCenter: gapCenter,
         gapSize: gapSize,
-        passed: false
+        passed: false,
+        scoreIndicator: scoreIndicator,
+        indicatorMesh: indicatorMesh
     });
+}
+
+// Créer une texture de texte pour 3D
+function createTextTexture(text, options = {}) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const fontSize = options.fontSize || 32;
+    const fontFamily = options.fontFamily || 'Arial';
+    const textColor = options.textColor || '#ffffff';
+    const bgColor = options.bgColor || 'transparent';
+
+    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+    const textWidth = ctx.measureText(text).width;
+
+    canvas.width = Math.max(128, Math.pow(2, Math.ceil(Math.log2(textWidth + 20))));
+    canvas.height = 64;
+
+    if (bgColor !== 'transparent') {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    return { texture, width: canvas.width, height: canvas.height };
+}
+
+// Créer un indicateur de score 3D (ligne verticale avec nom en bas)
+function create3DScoreIndicator(x, y, scoreInfo) {
+    const indicatorGroup = new THREE.Group();
+    indicatorGroup.position.set(x + 3, 0, 0);
+
+    // Ligne verticale dorée (du haut vers le bas)
+    const linePoints = [];
+    const topY = 12; // Haut de l'écran
+    const bottomY = -8; // Juste au-dessus du sol
+    for (let i = 0; i <= 20; i++) {
+        linePoints.push(new THREE.Vector3(0, topY - (i * (topY - bottomY) / 20), 0));
+    }
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const lineMaterial = new THREE.LineDashedMaterial({
+        color: 0xffdd00,
+        dashSize: 0.5,
+        gapSize: 0.25,
+        linewidth: 2
+    });
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.computeLineDistances();
+    indicatorGroup.add(line);
+
+    // Badge en bas avec nom
+    const badgeY = bottomY - 0.8;
+
+    // Fond du badge
+    const badgeGeometry = new THREE.PlaneGeometry(2.5, 1);
+    const badgeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+    });
+    const badge = new THREE.Mesh(badgeGeometry, badgeMaterial);
+    badge.position.set(0, badgeY, 0);
+    indicatorGroup.add(badge);
+
+    // Bordure dorée du badge
+    const borderPoints = [
+        new THREE.Vector3(-1.25, 0.5, 0.01),
+        new THREE.Vector3(1.25, 0.5, 0.01),
+        new THREE.Vector3(1.25, -0.5, 0.01),
+        new THREE.Vector3(-1.25, -0.5, 0.01),
+        new THREE.Vector3(-1.25, 0.5, 0.01)
+    ];
+    const borderGeometry = new THREE.BufferGeometry().setFromPoints(borderPoints);
+    const borderMaterial = new THREE.LineBasicMaterial({ color: 0xffdd00 });
+    const border = new THREE.Line(borderGeometry, borderMaterial);
+    border.position.set(0, badgeY, 0);
+    indicatorGroup.add(border);
+
+    // Texte du rang
+    const rankText = createTextTexture(`#${scoreInfo.rank}`, { textColor: '#ffdd00', fontSize: 28 });
+    const rankMaterial = new THREE.SpriteMaterial({ map: rankText.texture, transparent: true });
+    const rankSprite = new THREE.Sprite(rankMaterial);
+    rankSprite.position.set(0, badgeY + 0.25, 0.1);
+    rankSprite.scale.set(1.2, 0.4, 1);
+    indicatorGroup.add(rankSprite);
+
+    // Texte du nom
+    const nameText = createTextTexture(scoreInfo.name.substring(0, 8), { textColor: '#ffffff', fontSize: 24 });
+    const nameMaterial = new THREE.SpriteMaterial({ map: nameText.texture, transparent: true });
+    const nameSprite = new THREE.Sprite(nameMaterial);
+    nameSprite.position.set(0, badgeY - 0.25, 0.1);
+    nameSprite.scale.set(1.5, 0.4, 1);
+    indicatorGroup.add(nameSprite);
+
+    // Lumière dorée subtile
+    const light = new THREE.PointLight(0xffaa00, 0.3, 8);
+    light.position.set(0, 0, 2);
+    indicatorGroup.add(light);
+
+    scene3D.add(indicatorGroup);
+
+    // Stocker les infos
+    indicatorGroup.userData = {
+        name: scoreInfo.name,
+        rank: scoreInfo.rank,
+        score: scoreInfo.score
+    };
+
+    return indicatorGroup;
 }
 
 // Types de power-ups 3D (mêmes effets qu'en 2D)
@@ -856,12 +1077,8 @@ function game3DLoop(currentTime) {
             trail.scale.x = 1 + Math.abs(game3DState.birdVelocity) * 2;
         }
 
-        // Spawn des tuyaux
-        game3DState.pipeSpawnAccumulator += deltaMultiplier;
-        if (game3DState.pipeSpawnAccumulator >= GAME3D_CONFIG.SPAWN_INTERVAL) {
-            game3DState.pipeSpawnAccumulator = 0;
-            create3DPipe();
-        }
+        // Animation de l'effet de feu si actif
+        updateFireEffect3D(currentTime);
 
         // Calculer la vitesse avec modificateurs de power-up
         let speedMultiplier = 1;
@@ -871,7 +1088,21 @@ function game3DLoop(currentTime) {
             speedMultiplier = 1.5;
         }
 
+        // God Mode : vitesse x2
+        if (cheatGodMode) {
+            speedMultiplier *= 2;
+        }
+
         const speed = (GAME3D_CONFIG.PIPE_SPEED + (game3DState.score * 0.002)) * speedMultiplier;
+
+        // Spawn des tuyaux (basé sur la DISTANCE parcourue, pas le temps)
+        // Cela garantit un espacement constant même quand la vitesse change (powerups FAST/SLOW)
+        game3DState.pipeSpawnAccumulator += speed * deltaMultiplier;
+        const PIPE_SPAWN_DISTANCE_3D = GAME3D_CONFIG.PIPE_SPEED * GAME3D_CONFIG.SPAWN_INTERVAL;
+        if (game3DState.pipeSpawnAccumulator >= PIPE_SPAWN_DISTANCE_3D) {
+            game3DState.pipeSpawnAccumulator -= PIPE_SPAWN_DISTANCE_3D;
+            create3DPipe();
+        }
 
         // Mettre à jour les tuyaux
         pipes3D.forEach((pipe, index) => {
@@ -883,6 +1114,7 @@ function game3DLoop(currentTime) {
             if (pipe.bottomRing) pipe.bottomRing.position.x -= speed * deltaMultiplier;
             if (pipe.topGlow) pipe.topGlow.position.x -= speed * deltaMultiplier;
             if (pipe.bottomGlow) pipe.bottomGlow.position.x -= speed * deltaMultiplier;
+            if (pipe.indicatorMesh) pipe.indicatorMesh.position.x -= speed * deltaMultiplier;
 
             // Animation des anneaux
             if (pipe.topRing) pipe.topRing.rotation.z += 0.02 * deltaMultiplier;
@@ -899,6 +1131,14 @@ function game3DLoop(currentTime) {
                 game3DState.score++;
                 document.getElementById('score').textContent = game3DState.score;
                 playScoreSound();
+
+                // Vérifier si on dépasse le meilleur score (effet de feu)
+                if (!game3DState.isOnFire && game3DState.score > game3DState.currentHighScore && game3DState.currentHighScore > 0) {
+                    game3DState.isOnFire = true;
+                    game3DState.fireMessageTimer = 90; // 1.5 secondes
+                    activateFireEffect3D();
+                    console.log('🔥 ON FIRE 3D! Nouveau record de', game3DState.currentHighScoreHolder, 'battu!');
+                }
             }
 
             // Supprimer les tuyaux hors écran
@@ -909,6 +1149,7 @@ function game3DLoop(currentTime) {
                 if (pipe.bottomRing) scene3D.remove(pipe.bottomRing);
                 if (pipe.topGlow) scene3D.remove(pipe.topGlow);
                 if (pipe.bottomGlow) scene3D.remove(pipe.bottomGlow);
+                if (pipe.indicatorMesh) scene3D.remove(pipe.indicatorMesh);
                 pipes3D.splice(index, 1);
             }
         });
@@ -945,31 +1186,38 @@ function game3DLoop(currentTime) {
 
         // Vérifier les collisions
         if (check3DCollisions()) {
-            game3DState.lives--;
-            document.getElementById('lives').textContent = '❤️ ' + game3DState.lives;
-
-            if (game3DState.lives <= 0) {
-                game3DState.over = true;
-                playCrashSound();
-                stopMusic();
-                show3DGameOver();
+            // God Mode : +1 score au lieu de perdre une vie, pas de reset position
+            if (cheatGodMode) {
+                game3DState.score++;
+                document.getElementById('score').textContent = game3DState.score;
+                playScoreSound();
             } else {
-                // Reset position
-                game3DState.birdY = 0;
-                game3DState.birdVelocity = 0;
-                bird3D.position.y = 0;
-                playCrashSound();
+                game3DState.lives--;
+                document.getElementById('lives').textContent = '❤️ ' + game3DState.lives;
 
-                // Supprimer quelques tuyaux
-                while (pipes3D.length > 0 && pipes3D[0].top.position.x < 10) {
-                    const pipe = pipes3D[0];
-                    scene3D.remove(pipe.top);
-                    scene3D.remove(pipe.bottom);
-                    if (pipe.topRing) scene3D.remove(pipe.topRing);
-                    if (pipe.bottomRing) scene3D.remove(pipe.bottomRing);
-                    if (pipe.topGlow) scene3D.remove(pipe.topGlow);
-                    if (pipe.bottomGlow) scene3D.remove(pipe.bottomGlow);
-                    pipes3D.shift();
+                if (game3DState.lives <= 0) {
+                    game3DState.over = true;
+                    playCrashSound();
+                    stopMusic();
+                    show3DGameOver();
+                } else {
+                    // Reset position
+                    game3DState.birdY = 0;
+                    game3DState.birdVelocity = 0;
+                    bird3D.position.y = 0;
+                    playCrashSound();
+
+                    // Supprimer quelques tuyaux
+                    while (pipes3D.length > 0 && pipes3D[0].top.position.x < 10) {
+                        const pipe = pipes3D[0];
+                        scene3D.remove(pipe.top);
+                        scene3D.remove(pipe.bottom);
+                        if (pipe.topRing) scene3D.remove(pipe.topRing);
+                        if (pipe.bottomRing) scene3D.remove(pipe.bottomRing);
+                        if (pipe.topGlow) scene3D.remove(pipe.topGlow);
+                        if (pipe.bottomGlow) scene3D.remove(pipe.bottomGlow);
+                        pipes3D.shift();
+                    }
                 }
             }
         }
@@ -977,6 +1225,9 @@ function game3DLoop(currentTime) {
 
     // Afficher le HUD du power-up actif
     draw3DActivePowerUp();
+
+    // Afficher le message de record battu
+    draw3DFireMessage();
 
     // Rendre la scène
     renderer3D.render(scene3D, camera3D);
@@ -1015,6 +1266,7 @@ async function show3DGameOver() {
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${game3DState.score}</strong></p>
             ${rankText}
+            ${game3DState.score > 0 ? '<button onclick="submit3DScore()">✓ ENREGISTRER</button>' : ''}
             <button onclick="restart()">🔄 MENU</button>
         `;
     }
@@ -1030,9 +1282,16 @@ async function submit3DScore() {
 }
 
 // Démarrer le jeu 3D
-function start3DGame() {
+async function start3DGame() {
     // Sauvegarder le nom du joueur
     game3DState.playerName = document.getElementById('playerNameStart').value.trim().toUpperCase() || 'JOUEUR';
+
+    // Charger les meilleurs scores pour l'effet de feu et les indicateurs
+    const highScores = await getHighScores('3d');
+    game3DState.topScores = highScores.filter(s => s.score > 0);
+    game3DState.currentHighScore = highScores[0] ? highScores[0].score : 0;
+    game3DState.currentHighScoreHolder = highScores[0] ? highScores[0].name : '';
+
     init3DGame();
     game3DLoop(performance.now());
 }
@@ -1162,6 +1421,48 @@ function draw3DActivePowerUp() {
         if (hudElement) {
             hudElement.style.display = 'none';
         }
+    }
+}
+
+// Afficher le message de record battu en 3D
+function draw3DFireMessage() {
+    if (game3DState.fireMessageTimer <= 0) return;
+
+    game3DState.fireMessageTimer--;
+
+    let messageElement = document.getElementById('fire-message-3d');
+    if (!messageElement) {
+        messageElement = document.createElement('div');
+        messageElement.id = 'fire-message-3d';
+        messageElement.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+        `;
+        document.getElementById('gameContainer').appendChild(messageElement);
+    }
+
+    const alpha = Math.min(1, game3DState.fireMessageTimer / 30);
+    const scale = 1 + (180 - game3DState.fireMessageTimer) / 500;
+
+    messageElement.innerHTML = `
+        <div style="font-size: ${36 * scale}px; font-weight: bold; color: #ff6600;
+                    text-shadow: 0 0 20px #ff4400, 0 0 40px #ff0000; opacity: ${alpha};">
+            RECORD DE ${game3DState.currentHighScoreHolder} BATTU!
+        </div>
+        <div style="font-size: ${24 * scale}px; color: #ffffff;
+                    text-shadow: 0 0 10px #ffaa00; margin-top: 10px; opacity: ${alpha};">
+            Ancien record: ${game3DState.currentHighScore} points
+        </div>
+    `;
+    messageElement.style.display = 'block';
+
+    if (game3DState.fireMessageTimer <= 0) {
+        messageElement.style.display = 'none';
     }
 }
 

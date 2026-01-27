@@ -3,6 +3,46 @@
 // Mode de jeu actuel ('2d' ou '3d')
 let currentGameMode = '2d';
 
+// Cheat code : God Mode (vies infinies)
+let cheatGodMode = false;
+let cheatKeyCount = 0;
+let cheatKeyTimer = null;
+
+// Détecter le cheat code (H H H dans le menu)
+document.addEventListener('keydown', function(e) {
+    // Seulement dans le menu principal
+    const mainMenu = document.getElementById('mainMenu');
+    if (mainMenu.style.display === 'none') {
+        return;
+    }
+
+    if (e.key.toLowerCase() === 'h') {
+        cheatKeyCount++;
+
+        // Reset le timer
+        if (cheatKeyTimer) clearTimeout(cheatKeyTimer);
+        cheatKeyTimer = setTimeout(() => { cheatKeyCount = 0; }, 1000);
+
+        // 3 pressions = activation/désactivation
+        if (cheatKeyCount >= 3) {
+            cheatGodMode = !cheatGodMode;
+            cheatKeyCount = 0;
+
+            // Feedback visuel
+            const mainMenuTitle = mainMenu.querySelector('h2');
+            if (cheatGodMode) {
+                mainMenuTitle.style.color = '#ff0000';
+                mainMenuTitle.textContent = 'CHILLY BIRD [GOD MODE]';
+                console.log('🔥 GOD MODE ACTIVATED');
+            } else {
+                mainMenuTitle.style.color = '';
+                mainMenuTitle.textContent = 'CHILLY BIRD';
+                console.log('❄️ GOD MODE DEACTIVATED');
+            }
+        }
+    }
+});
+
 // Afficher l'écran de sélection du mode de jeu
 function showGameModeScreen(mode) {
     currentGameMode = mode;

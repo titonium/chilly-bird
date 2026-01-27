@@ -59,6 +59,25 @@ function createPipe() {
     const baseMoveSpeed = Math.random() * 2.5 + 1.5; // vitesse de référence pour 1080p
     const scaledMoveSpeed = baseMoveSpeed * (canvas.height / 1080);
 
+    // Calculer le score que ce tuyau représente (quand il sera passé)
+    const pipesNotPassed = gameState.pipes.filter(p => !p.passed).length;
+    const pipeScore = gameState.score + pipesNotPassed + 1;
+
+    // Vérifier si ce score correspond à un score du top 10
+    let scoreIndicator = null;
+    if (gameState.topScores && gameState.topScores.length > 0) {
+        for (let i = 0; i < gameState.topScores.length; i++) {
+            if (gameState.topScores[i].score === pipeScore) {
+                scoreIndicator = {
+                    name: gameState.topScores[i].name,
+                    score: gameState.topScores[i].score,
+                    rank: i + 1
+                };
+                break;
+            }
+        }
+    }
+
     gameState.pipes.push({
         x: canvas.width,
         top: top,
@@ -68,7 +87,8 @@ function createPipe() {
         moving: isMoving,
         moveSpeed: isMoving ? scaledMoveSpeed * (Math.random() > 0.5 ? 1 : -1) : 0,
         originalTop: top,
-        moveRange: scaledMoveRange
+        moveRange: scaledMoveRange,
+        scoreIndicator: scoreIndicator
     });
 }
 
@@ -102,6 +122,13 @@ function updatePipes(deltaMultiplier = 1) {
             pipe.passed = true;
             gameState.score++;
             document.getElementById('score').textContent = gameState.score;
+
+            // Vérifier si on dépasse le meilleur score (effet de feu)
+            if (!gameState.isOnFire && gameState.score > gameState.currentHighScore && gameState.currentHighScore > 0) {
+                gameState.isOnFire = true;
+                gameState.fireMessageTimer = 90; // 1.5 secondes à 60fps
+                console.log('🔥 ON FIRE! Nouveau record en cours! Ancien record:', gameState.currentHighScoreHolder, gameState.currentHighScore);
+            }
 
             // Déclencher l'affichage du boost de vitesse si on passe un palier de 10
             if (gameState.score % 10 === 0) {
@@ -191,6 +218,11 @@ function updateGameSpeed() {
             gameState.pipeSpeed = baseSpeed * 1.5; // 50% plus rapide
         } else {
             gameState.pipeSpeed = baseSpeed;
+        }
+
+        // God Mode : vitesse x2
+        if (cheatGodMode) {
+            gameState.pipeSpeed *= 2;
         }
     }
 }

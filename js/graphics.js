@@ -105,6 +105,12 @@ let nebulaClouds = [];
 let galaxies = [];
 let shootingStars = [];
 
+// Lignes de score (indicateurs des records)
+let scoreMarkers = [];
+
+// Traînée de feu de l'oiseau
+let fireTrail = [];
+
 // Initialiser les étoiles avec effet galaxie
 function createStars() {
     gameState.stars = [];
@@ -424,6 +430,119 @@ function drawBackground() {
     drawShootingStars(speedMultiplier);
 
     ctx.globalAlpha = 1;
+
+    // Dessiner les lignes de score (indicateurs de records)
+    drawScoreMarkers(speedMultiplier);
+}
+
+// Ajouter un marqueur de score (appelé depuis physics.js)
+function addScoreMarker(name, score, rank, x) {
+    scoreMarkers.push({
+        x: x,
+        name: name,
+        score: score,
+        rank: rank
+    });
+    console.log('Score marker added:', name, 'at x:', x, 'total markers:', scoreMarkers.length);
+}
+
+// Réinitialiser les marqueurs de score
+function resetScoreMarkers() {
+    scoreMarkers = [];
+}
+
+// Mettre à jour les marqueurs de score (appelé depuis update)
+function updateScoreMarkers(deltaMultiplier) {
+    // Forcer deltaMultiplier à 1 si invalide
+    const dm = (deltaMultiplier && deltaMultiplier > 0) ? deltaMultiplier : 1;
+    const speed = gameState.pipeSpeed || GAME_CONFIG.BASE_PIPE_SPEED;
+
+    for (let i = scoreMarkers.length - 1; i >= 0; i--) {
+        const marker = scoreMarkers[i];
+
+        // Déplacer avec les tuyaux (même vitesse exacte que les pipes)
+        marker.x -= speed * dm;
+
+        // Supprimer si hors écran (avec marge)
+        if (marker.x < -200) {
+            scoreMarkers.splice(i, 1);
+        }
+    }
+}
+
+// Dessiner les lignes de score
+function drawScoreMarkers(speedMultiplier) {
+    for (let i = scoreMarkers.length - 1; i >= 0; i--) {
+        const marker = scoreMarkers[i];
+
+        // Ne pas dessiner si hors écran
+        if (marker.x < -150 || marker.x > canvas.width + 150) continue;
+
+        ctx.save();
+
+        const groundY = canvas.height - GAME_CONFIG.GROUND_HEIGHT;
+
+        // Ligne verticale dorée épaisse avec glow
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#ffaa00';
+        ctx.shadowBlur = 20;
+        ctx.setLineDash([20, 10]);
+        ctx.beginPath();
+        ctx.moveTo(marker.x, 70);
+        ctx.lineTo(marker.x, groundY - 65);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Badge en bas - BEAUCOUP PLUS GRAND
+        const badgeWidth = 140;
+        const badgeHeight = 60;
+        const badgeY = groundY - 62;
+
+        // Ombre portée
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 4;
+        ctx.shadowOffsetY = 4;
+
+        // Fond avec dégradé doré/noir
+        const bgGradient = ctx.createLinearGradient(
+            marker.x - badgeWidth/2, badgeY,
+            marker.x - badgeWidth/2, badgeY + badgeHeight
+        );
+        bgGradient.addColorStop(0, 'rgba(60, 50, 0, 0.95)');
+        bgGradient.addColorStop(0.5, 'rgba(30, 25, 0, 0.95)');
+        bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(marker.x - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
+
+        // Bordure dorée épaisse brillante
+        ctx.shadowColor = '#ffcc00';
+        ctx.shadowBlur = 25;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(marker.x - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
+
+        // Rang avec étoile - GRAND
+        ctx.shadowColor = '#ffaa00';
+        ctx.shadowBlur = 15;
+        ctx.font = 'bold 26px Arial';
+        ctx.fillStyle = '#ffdd00';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`★ #${marker.rank}`, marker.x, badgeY + 20);
+
+        // Nom du joueur - GRAND ET VISIBLE
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(marker.name.substring(0, 10), marker.x, badgeY + 46);
+
+        ctx.restore();
+    }
 }
 
 // Dessiner les étoiles filantes
@@ -488,48 +607,202 @@ function drawShootingStars(speedMultiplier) {
     }
 }
 
+// Mettre à jour la traînée de feu
+function updateFireTrail() {
+    if (!gameState.isOnFire) {
+        fireTrail = [];
+        return;
+    }
+
+    // Ajouter la position actuelle à la traînée
+    fireTrail.unshift({
+        x: gameState.bird.x,
+        y: gameState.bird.y + gameState.bird.height / 2,
+        life: 1.0,
+        size: 30 + Math.random() * 10
+    });
+
+    // Mettre à jour et supprimer les anciennes positions
+    for (let i = fireTrail.length - 1; i >= 0; i--) {
+        fireTrail[i].life -= 0.04;
+        fireTrail[i].x -= gameState.pipeSpeed * 0.5; // La traînée reste un peu en arrière
+
+        if (fireTrail[i].life <= 0) {
+            fireTrail.splice(i, 1);
+        }
+    }
+
+    // Limiter la taille de la traînée
+    if (fireTrail.length > 25) {
+        fireTrail.pop();
+    }
+}
+
+// Dessiner la traînée de feu
+function drawFireTrail() {
+    if (!gameState.isOnFire || fireTrail.length === 0) return;
+
+    ctx.save();
+
+    // Dessiner chaque élément de la traînée (du plus vieux au plus récent)
+    for (let i = fireTrail.length - 1; i >= 0; i--) {
+        const trail = fireTrail[i];
+        const size = trail.size * trail.life;
+
+        // Flamme externe (rouge/orange)
+        const outerGradient = ctx.createRadialGradient(trail.x, trail.y, 0, trail.x, trail.y, size);
+        outerGradient.addColorStop(0, `rgba(255, 100, 0, ${trail.life * 0.6})`);
+        outerGradient.addColorStop(0.5, `rgba(255, 50, 0, ${trail.life * 0.4})`);
+        outerGradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = outerGradient;
+        ctx.beginPath();
+        ctx.arc(trail.x, trail.y, size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flamme interne (jaune/blanc)
+        if (trail.life > 0.5) {
+            const innerGradient = ctx.createRadialGradient(trail.x, trail.y, 0, trail.x, trail.y, size * 0.5);
+            innerGradient.addColorStop(0, `rgba(255, 255, 200, ${trail.life * 0.8})`);
+            innerGradient.addColorStop(0.5, `rgba(255, 200, 0, ${trail.life * 0.5})`);
+            innerGradient.addColorStop(1, 'transparent');
+
+            ctx.fillStyle = innerGradient;
+            ctx.beginPath();
+            ctx.arc(trail.x, trail.y, size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    ctx.restore();
+}
+
 // Dessiner l'oiseau
 function drawBird() {
     ctx.save();
     const theme = getCurrentTheme();
+
+    // Mettre à jour et dessiner la traînée de feu AVANT de dessiner l'oiseau
+    updateFireTrail();
+    ctx.restore();
+    drawFireTrail();
+    ctx.save();
 
     const rotation = Math.min(Math.max(gameState.bird.velocity * 0.05, -0.5), 0.5);
     ctx.translate(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
     ctx.rotate(rotation);
     ctx.translate(-gameState.bird.width / 2, -gameState.bird.height / 2);
 
-    // Aura lumineuse
-    ctx.shadowColor = theme.primary;
-    ctx.shadowBlur = 30;
+    // Effet de feu si on dépasse le meilleur score
+    if (gameState.isOnFire) {
+        // Flammes directement sur l'oiseau
+        for (let i = 0; i < 5; i++) {
+            const time = gameState.frameCount * 0.2 + i * 0.5;
+            const flameLength = 25 + Math.sin(time) * 10;
+            const flameWidth = 10 - i * 1.5;
+            const flameX = -15 - i * 8;
+            const flameY = 20 + Math.sin(time + i) * 5;
+
+            const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY, flameLength);
+            gradient.addColorStop(0, 'rgba(255, 255, 100, 0.9)');
+            gradient.addColorStop(0.3, 'rgba(255, 200, 0, 0.7)');
+            gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.5)');
+            gradient.addColorStop(1, 'transparent');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(flameX, flameY, flameLength, flameWidth, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Étincelles (plus fréquentes)
+        if (gameState.frameCount % 2 === 0) {
+            for (let i = 0; i < 5; i++) {
+                createParticle(
+                    gameState.bird.x - 10 - Math.random() * 40,
+                    gameState.bird.y + gameState.bird.height / 2 + (Math.random() - 0.5) * 40,
+                    ['#ffff00', '#ff8800', '#ff4400', '#ffffff'][Math.floor(Math.random() * 4)]
+                );
+            }
+        }
+
+        // Aura de feu intense
+        ctx.shadowColor = '#ff4400';
+        ctx.shadowBlur = 60;
+    } else {
+        // Aura lumineuse normale
+        ctx.shadowColor = theme.primary;
+        ctx.shadowBlur = 30;
+    }
 
     // Corps principal
-    ctx.fillStyle = theme.primary;
+    ctx.fillStyle = gameState.isOnFire ? '#ff6600' : theme.primary;
     ctx.fillRect(0, 8, 40, 24);
 
     // Détails lumineux
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = gameState.isOnFire ? '#ffff00' : '#ffffff';
     ctx.fillRect(5, 12, 30, 4);
     ctx.fillRect(5, 20, 30, 4);
 
     // Aile animée
     const wingOffset = Math.sin(gameState.frameCount * 0.2) * 5;
-    ctx.fillStyle = theme.secondary;
-    ctx.shadowColor = theme.secondary;
+    ctx.fillStyle = gameState.isOnFire ? '#ff4400' : theme.secondary;
+    ctx.shadowColor = gameState.isOnFire ? '#ff4400' : theme.secondary;
     ctx.fillRect(12, 16 + wingOffset, 20, 8);
 
     // Tête
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#ffffff';
+    ctx.fillStyle = gameState.isOnFire ? '#ffcc00' : '#ffffff';
+    ctx.shadowColor = gameState.isOnFire ? '#ffcc00' : '#ffffff';
     ctx.fillRect(35, 12, 15, 16);
 
-    // Œil
-    ctx.fillStyle = theme.secondary;
+    // Œil (rouge ardent si en feu)
+    ctx.fillStyle = gameState.isOnFire ? '#ff0000' : theme.secondary;
     ctx.fillRect(42, 16, 6, 6);
 
     // Traînée de particules
     if (gameState.frameCount % 3 === 0 && gameState.started && !gameState.over) {
-        createParticle(gameState.bird.x, gameState.bird.y + gameState.bird.height / 2, theme.primary);
+        createParticle(gameState.bird.x, gameState.bird.y + gameState.bird.height / 2, gameState.isOnFire ? '#ff6600' : theme.primary);
     }
+
+    ctx.restore();
+}
+
+// Afficher le message de record battu
+function drawFireMessage() {
+    if (gameState.fireMessageTimer <= 0) return;
+
+    gameState.fireMessageTimer--;
+
+    ctx.save();
+
+    const alpha = Math.min(1, gameState.fireMessageTimer / 30);
+    const scale = 1 + (180 - gameState.fireMessageTimer) / 500;
+    const shake = Math.sin(gameState.fireMessageTimer * 0.5) * 3;
+
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+
+    // Ombre du texte
+    ctx.font = `bold ${36 * scale}px Arial`;
+    ctx.fillStyle = '#000000';
+    ctx.fillText(`RECORD DE ${gameState.currentHighScoreHolder} BATTU!`, canvas.width / 2 + 2 + shake, 180 + 2);
+
+    // Texte principal avec effet de feu
+    const gradient = ctx.createLinearGradient(0, 150, 0, 200);
+    gradient.addColorStop(0, '#ffff00');
+    gradient.addColorStop(0.5, '#ff8800');
+    gradient.addColorStop(1, '#ff0000');
+
+    ctx.fillStyle = gradient;
+    ctx.shadowColor = '#ff4400';
+    ctx.shadowBlur = 30;
+    ctx.fillText(`RECORD DE ${gameState.currentHighScoreHolder} BATTU!`, canvas.width / 2 + shake, 180);
+
+    // Sous-titre avec ancien score
+    ctx.font = `bold ${24 * scale}px Arial`;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 15;
+    ctx.fillText(`Ancien record: ${gameState.currentHighScore} points`, canvas.width / 2, 220);
 
     ctx.restore();
 }

@@ -30,7 +30,13 @@ const gameState = {
     targetFPS: 60,
     frameInterval: 1000 / 60, // 16.67ms pour 60 FPS
     pipeCount: 0, // Compteur de tuyaux pour spawner les powerups tous les 5 tuyaux
-    pipeSpawnAccumulator: 0 // Accumulateur pour spawn des tuyaux (indépendant du FPS)
+    pipeSpawnAccumulator: 0, // Accumulateur pour spawn des tuyaux (indépendant du FPS)
+    // Tracking du meilleur score pour l'effet de feu
+    currentHighScore: 0,
+    currentHighScoreHolder: '',
+    isOnFire: false,
+    fireMessageTimer: 0,
+    topScores: [] // Top 10 scores pour les indicateurs sur tuyaux
 };
 
 // Mettre à jour les dimensions du jeu selon la résolution
@@ -63,7 +69,7 @@ function startWithName() {
 }
 
 // Démarrer le jeu
-function startGame() {
+async function startGame() {
     const messageEl = document.getElementById('message');
     const instructionsEl = document.getElementById('instructions');
 
@@ -82,6 +88,14 @@ function startGame() {
     gameState.lastTime = performance.now();
     gameState.powerUpSpawnAccumulator = 0;
     gameState.pipeSpawnAccumulator = 0;
+    gameState.isOnFire = false;
+    gameState.fireMessageTimer = 0;
+
+    // Charger les meilleurs scores pour l'effet de feu et les indicateurs
+    const highScores = await getHighScores('2d');
+    gameState.topScores = highScores.filter(s => s.score > 0);
+    gameState.currentHighScore = highScores[0] ? highScores[0].score : 0;
+    gameState.currentHighScoreHolder = highScores[0] ? highScores[0].name : '';
 
     // Charger le score sauvegardé ou commencer à 0
     const savedScore = localStorage.getItem('chillyBirdCurrentScore');
@@ -101,6 +115,7 @@ function startGame() {
     gameState.pipeCount = 0; // Reset du compteur pour les powerups
     resetBackgroundTransition(); // Reset de la transition de fond
     resetLastPipeCenter(); // Reset de la position du dernier tuyau
+    resetScoreMarkers(); // Reset des marqueurs de score
 
     // Démarrer la musique si le son est activé
     if (soundEnabled) {
@@ -150,6 +165,7 @@ async function showGameOver() {
             <p style="color: #ffbe0b; font-size: 22px; margin: 20px 0; font-style: italic;">${funnyMsg}</p>
             <p style="font-size: 28px; color: #ff00ff;">🎯 Score Final: <strong>${gameState.score}</strong></p>
             ${rankText}
+            ${gameState.score > 0 ? '<button onclick="submitScore()">✓ ENREGISTRER</button>' : ''}
             <button onclick="restart()">🔄 MENU</button>
         `;
     }
@@ -187,14 +203,18 @@ function update(deltaMultiplier) {
     // Mettre à jour les tuyaux
     updatePipes(deltaMultiplier);
 
+    // Mettre à jour les marqueurs de score
+    updateScoreMarkers(deltaMultiplier);
+
     // Mettre à jour les power-ups
     updatePowerUps(deltaMultiplier);
 
-    // Créer de nouveaux tuyaux (basé sur l'accumulateur ajusté par deltaMultiplier)
-    // Cela garantit un espacement constant indépendamment du FPS du navigateur
-    gameState.pipeSpawnAccumulator += deltaMultiplier;
-    if (gameState.pipeSpawnAccumulator >= GAME_CONFIG.PIPE_SPAWN_INTERVAL) {
-        gameState.pipeSpawnAccumulator -= GAME_CONFIG.PIPE_SPAWN_INTERVAL;
+    // Créer de nouveaux tuyaux (basé sur la DISTANCE parcourue, pas le temps)
+    // Cela garantit un espacement constant même quand la vitesse change (powerups FAST/SLOW)
+    gameState.pipeSpawnAccumulator += gameState.pipeSpeed * deltaMultiplier;
+    const PIPE_SPAWN_DISTANCE = GAME_CONFIG.BASE_PIPE_SPEED * GAME_CONFIG.PIPE_SPAWN_INTERVAL;
+    if (gameState.pipeSpawnAccumulator >= PIPE_SPAWN_DISTANCE) {
+        gameState.pipeSpawnAccumulator -= PIPE_SPAWN_DISTANCE;
         createPipe();
         gameState.pipeCount++;
 
@@ -207,23 +227,30 @@ function update(deltaMultiplier) {
 
     // Vérifier les collisions
     if (checkCollisions()) {
-        gameState.lives--;
-        document.getElementById('lives').textContent = '❤️ ' + gameState.lives;
-
-        if (gameState.lives <= 0) {
-            gameState.over = true;
-            // Créer une explosion spectaculaire
-            createExplosion(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
-            clearCurrentScore(); // Effacer le score sauvegardé
-            showGameOver();
+        // God Mode : +1 score au lieu de perdre une vie, pas de reset position
+        if (cheatGodMode) {
+            gameState.score++;
+            document.getElementById('score').textContent = gameState.score;
+            playScoreSound();
         } else {
-            // Perte d'une vie - faire clignoter et réinitialiser position
-            createExplosion(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
-            gameState.bird.y = canvas.height / 2;
-            gameState.bird.velocity = 0;
+            gameState.lives--;
+            document.getElementById('lives').textContent = '❤️ ' + gameState.lives;
 
-            // Retirer quelques tuyaux devant pour donner une chance
-            gameState.pipes = gameState.pipes.filter(pipe => pipe.x > canvas.width / 2);
+            if (gameState.lives <= 0) {
+                gameState.over = true;
+                // Créer une explosion spectaculaire
+                createExplosion(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
+                clearCurrentScore(); // Effacer le score sauvegardé
+                showGameOver();
+            } else {
+                // Perte d'une vie - faire clignoter et réinitialiser position
+                createExplosion(gameState.bird.x + gameState.bird.width / 2, gameState.bird.y + gameState.bird.height / 2);
+                gameState.bird.y = canvas.height / 2;
+                gameState.bird.velocity = 0;
+
+                // Retirer quelques tuyaux devant pour donner une chance
+                gameState.pipes = gameState.pipes.filter(pipe => pipe.x > canvas.width / 2);
+            }
         }
     }
 }
@@ -238,6 +265,7 @@ function draw() {
     drawParticles();
     drawBird();
     drawActivePowerUp();
+    drawFireMessage(); // Message de record battu
     // Barre de progression (seulement si le jeu est en cours)
     if (gameState.started && !gameState.over) {
         drawProgressBar();
