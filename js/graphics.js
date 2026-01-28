@@ -105,9 +105,6 @@ let nebulaClouds = [];
 let galaxies = [];
 let shootingStars = [];
 
-// Lignes de score (indicateurs des records)
-let scoreMarkers = [];
-
 // Traînée de feu de l'oiseau
 let fireTrail = [];
 
@@ -430,119 +427,6 @@ function drawBackground() {
     drawShootingStars(speedMultiplier);
 
     ctx.globalAlpha = 1;
-
-    // Dessiner les lignes de score (indicateurs de records)
-    drawScoreMarkers(speedMultiplier);
-}
-
-// Ajouter un marqueur de score (appelé depuis physics.js)
-function addScoreMarker(name, score, rank, x) {
-    scoreMarkers.push({
-        x: x,
-        name: name,
-        score: score,
-        rank: rank
-    });
-    console.log('Score marker added:', name, 'at x:', x, 'total markers:', scoreMarkers.length);
-}
-
-// Réinitialiser les marqueurs de score
-function resetScoreMarkers() {
-    scoreMarkers = [];
-}
-
-// Mettre à jour les marqueurs de score (appelé depuis update)
-function updateScoreMarkers(deltaMultiplier) {
-    // Forcer deltaMultiplier à 1 si invalide
-    const dm = (deltaMultiplier && deltaMultiplier > 0) ? deltaMultiplier : 1;
-    const speed = gameState.pipeSpeed || GAME_CONFIG.BASE_PIPE_SPEED;
-
-    for (let i = scoreMarkers.length - 1; i >= 0; i--) {
-        const marker = scoreMarkers[i];
-
-        // Déplacer avec les tuyaux (même vitesse exacte que les pipes)
-        marker.x -= speed * dm;
-
-        // Supprimer si hors écran (avec marge)
-        if (marker.x < -200) {
-            scoreMarkers.splice(i, 1);
-        }
-    }
-}
-
-// Dessiner les lignes de score
-function drawScoreMarkers(speedMultiplier) {
-    for (let i = scoreMarkers.length - 1; i >= 0; i--) {
-        const marker = scoreMarkers[i];
-
-        // Ne pas dessiner si hors écran
-        if (marker.x < -150 || marker.x > canvas.width + 150) continue;
-
-        ctx.save();
-
-        const groundY = canvas.height - GAME_CONFIG.GROUND_HEIGHT;
-
-        // Ligne verticale dorée épaisse avec glow
-        ctx.strokeStyle = '#ffdd00';
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#ffaa00';
-        ctx.shadowBlur = 20;
-        ctx.setLineDash([20, 10]);
-        ctx.beginPath();
-        ctx.moveTo(marker.x, 70);
-        ctx.lineTo(marker.x, groundY - 65);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Badge en bas - BEAUCOUP PLUS GRAND
-        const badgeWidth = 140;
-        const badgeHeight = 60;
-        const badgeY = groundY - 62;
-
-        // Ombre portée
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetX = 4;
-        ctx.shadowOffsetY = 4;
-
-        // Fond avec dégradé doré/noir
-        const bgGradient = ctx.createLinearGradient(
-            marker.x - badgeWidth/2, badgeY,
-            marker.x - badgeWidth/2, badgeY + badgeHeight
-        );
-        bgGradient.addColorStop(0, 'rgba(60, 50, 0, 0.95)');
-        bgGradient.addColorStop(0.5, 'rgba(30, 25, 0, 0.95)');
-        bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(marker.x - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
-
-        // Bordure dorée épaisse brillante
-        ctx.shadowColor = '#ffcc00';
-        ctx.shadowBlur = 25;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        ctx.strokeStyle = '#ffdd00';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(marker.x - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
-
-        // Rang avec étoile - GRAND
-        ctx.shadowColor = '#ffaa00';
-        ctx.shadowBlur = 15;
-        ctx.font = 'bold 26px Arial';
-        ctx.fillStyle = '#ffdd00';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`★ #${marker.rank}`, marker.x, badgeY + 20);
-
-        // Nom du joueur - GRAND ET VISIBLE
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 8;
-        ctx.font = 'bold 20px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(marker.name.substring(0, 10), marker.x, badgeY + 46);
-
-        ctx.restore();
-    }
 }
 
 // Dessiner les étoiles filantes
@@ -894,6 +778,71 @@ function drawPipe(pipe) {
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 5;
         ctx.fillText('MOBILE', pipe.x + GAME_CONFIG.PIPE_WIDTH / 2, arrowY + 5);
+    }
+
+    // Indicateur de score (ligne verticale + nom en bas) - LIÉ AU TUYAU
+    if (pipe.scoreIndicator) {
+        const markerX = pipe.x + GAME_CONFIG.PIPE_WIDTH / 2;
+        const groundY = canvas.height - GAME_CONFIG.GROUND_HEIGHT;
+
+        // Ligne verticale dorée épaisse
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 5;
+        ctx.shadowColor = '#ffaa00';
+        ctx.shadowBlur = 25;
+        ctx.setLineDash([25, 12]);
+        ctx.beginPath();
+        ctx.moveTo(markerX, 80);
+        ctx.lineTo(markerX, groundY - 80);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Badge en bas - TRÈS GRAND ET VISIBLE
+        const badgeWidth = 160;
+        const badgeHeight = 70;
+        const badgeY = groundY - 75;
+
+        // Ombre portée forte
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+
+        // Fond avec dégradé doré
+        const bgGradient = ctx.createLinearGradient(
+            markerX - badgeWidth/2, badgeY,
+            markerX - badgeWidth/2, badgeY + badgeHeight
+        );
+        bgGradient.addColorStop(0, 'rgba(80, 60, 0, 0.95)');
+        bgGradient.addColorStop(0.5, 'rgba(40, 30, 0, 0.95)');
+        bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(markerX - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
+
+        // Bordure dorée brillante épaisse
+        ctx.shadowColor = '#ffcc00';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(markerX - badgeWidth/2, badgeY, badgeWidth, badgeHeight);
+
+        // Rang avec étoile - TRÈS GRAND
+        ctx.shadowColor = '#ffaa00';
+        ctx.shadowBlur = 20;
+        ctx.font = 'bold 32px Arial';
+        ctx.fillStyle = '#ffdd00';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`★ #${pipe.scoreIndicator.rank}`, markerX, badgeY + 24);
+
+        // Nom du joueur - TRÈS GRAND ET LISIBLE
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 10;
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(pipe.scoreIndicator.name.substring(0, 10), markerX, badgeY + 52);
     }
 
     ctx.restore();

@@ -1,5 +1,13 @@
 # Changelog - Chilly Bird
 
+## [2.6.4] - 2026-01-28
+### Fixed
+- Indicateurs de score maintenant parfaitement synchronisés avec les tuyaux
+  - Ligne verticale dorée épaisse (5px) avec pointillés
+  - Badge très grand (160x70) avec texte lisible
+  - Rang en 32px, nom en 24px
+  - Défilent et disparaissent avec les tuyaux (liés directement)
+
 ## [2.6.2] - 2026-01-27
 ### Changed
 - Message de record battu réduit à 1.5 secondes (au lieu de 3)

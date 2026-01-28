@@ -115,7 +115,6 @@ async function startGame() {
     gameState.pipeCount = 0; // Reset du compteur pour les powerups
     resetBackgroundTransition(); // Reset de la transition de fond
     resetLastPipeCenter(); // Reset de la position du dernier tuyau
-    resetScoreMarkers(); // Reset des marqueurs de score
 
     // Démarrer la musique si le son est activé
     if (soundEnabled) {
@@ -202,9 +201,6 @@ function update(deltaMultiplier) {
 
     // Mettre à jour les tuyaux
     updatePipes(deltaMultiplier);
-
-    // Mettre à jour les marqueurs de score
-    updateScoreMarkers(deltaMultiplier);
 
     // Mettre à jour les power-ups
     updatePowerUps(deltaMultiplier);
