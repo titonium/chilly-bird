@@ -1092,7 +1092,7 @@ function game3DLoop(currentTime) {
             speedMultiplier *= 2;
         }
 
-        const speed = (GAME3D_CONFIG.PIPE_SPEED + (game3DState.score * 0.002)) * speedMultiplier;
+        const speed = (GAME3D_CONFIG.PIPE_SPEED + (game3DState.score * 0.01)) * speedMultiplier;
 
         // Spawn des tuyaux (basé sur la DISTANCE parcourue, pas le temps)
         // Cela garantit un espacement constant même quand la vitesse change (powerups FAST/SLOW)
