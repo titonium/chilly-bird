@@ -38,7 +38,7 @@ const game3DState = {
 const GAME3D_CONFIG = {
     BIRD_SIZE: 0.6,          // Taille réduite (était 1)
     PIPE_WIDTH: 2,
-    PIPE_GAP: 6,
+    PIPE_GAP: 5.5,
     PIPE_SPEED: 0.12,        // Vitesse augmentée (était 0.08)
     GRAVITY: 0.008,
     JUMP_POWER: 0.2,
@@ -46,7 +46,7 @@ const GAME3D_CONFIG = {
     WORLD_WIDTH: 30,
     WORLD_HEIGHT: 20,
     MAX_VERTICAL_DISTANCE_RATIO: 0.66,  // 66% de la hauteur (comme en 2D)
-    SPEED_INCREASE_RATE: 0.005  // Augmentation de vitesse par point
+    SPEED_INCREASE_RATE: 0.008  // Augmentation de vitesse par point
 };
 
 // Créer le décor simple (sol et ciel) avec défilement
@@ -1127,9 +1127,9 @@ function game3DLoop(currentTime) {
         game3DState.pipeSpawnAccumulator += speed * deltaMultiplier;
 
         // Espacement dynamique : augmente avec la vitesse actuelle
-        // Plus c'est rapide, plus les tuyaux sont espacés
+        // Plus c'est rapide, plus les tuyaux sont espacés (réduit à 80% pour plus de difficulté)
         const speedRatio = speed / GAME3D_CONFIG.PIPE_SPEED; // 1.0 au début, augmente avec le score
-        const dynamicInterval = GAME3D_CONFIG.SPAWN_INTERVAL * speedRatio;
+        const dynamicInterval = GAME3D_CONFIG.SPAWN_INTERVAL * (speedRatio * 0.8);
         const PIPE_SPAWN_DISTANCE_3D = GAME3D_CONFIG.PIPE_SPEED * dynamicInterval;
 
         if (game3DState.pipeSpawnAccumulator >= PIPE_SPAWN_DISTANCE_3D) {

@@ -1,5 +1,13 @@
 # Changelog - Chilly Bird
 
+## [2.6.7] - 2026-01-29
+### Changed
+- **Augmentation de la difficulté du mode 3D**
+  - Vitesse augmente 60% plus vite (0.005 → 0.008 par point)
+  - Gap réduit de 8% (6.0 → 5.5) pour passages plus étroits
+  - Espacement dynamique réduit à 80% pour tuyaux plus rapprochés à vitesse élevée
+  - Jeu plus challengeant tout en restant jouable
+
 ## [2.6.6] - 2026-01-29
 ### Changed
 - **Amélioration majeure de l'équilibre du gameplay 3D**
