@@ -1,5 +1,11 @@
 # Changelog - Chilly Bird
 
+## [2.6.5] - 2026-01-29
+### Fixed
+- Saut de l'oiseau en mode 3D maintenant constant (ne dépend plus du score)
+  - Le saut augmentait progressivement avec le score, rendant le jeu trop facile
+  - Aligné avec le comportement 2D où le saut reste constant
+
 ## [2.6.4] - 2026-01-28
 ### Fixed
 - Indicateurs de score maintenant parfaitement synchronisés avec les tuyaux

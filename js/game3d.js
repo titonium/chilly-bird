@@ -1002,9 +1002,8 @@ function jump3D() {
     }
 
     if (game3DState.started && !game3DState.over) {
-        // Rebond augmente avec la vitesse (basée sur le score)
-        const speedBonus = 1 + (game3DState.score * 0.015);
-        game3DState.birdVelocity = GAME3D_CONFIG.JUMP_POWER * speedBonus;
+        // Saut constant (comme en 2D)
+        game3DState.birdVelocity = GAME3D_CONFIG.JUMP_POWER;
         playJumpSound();
     }
 }
