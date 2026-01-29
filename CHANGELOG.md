@@ -1,5 +1,14 @@
 # Changelog - Chilly Bird
 
+## [2.6.6] - 2026-01-29
+### Changed
+- **Amélioration majeure de l'équilibre du gameplay 3D**
+  - Augmentation de vitesse réduite (0.01 → 0.005 par point) pour garder le jeu jouable
+  - Espacement horizontal dynamique : augmente avec la vitesse pour maintenir le temps de réaction
+  - Limitation de l'écart vertical entre portes consécutives (66% de la hauteur max)
+    - Garantit que toutes les portes sont atteignables
+    - Système identique au mode 2D pour une cohérence
+
 ## [2.6.5] - 2026-01-29
 ### Fixed
 - Saut de l'oiseau en mode 3D maintenant constant (ne dépend plus du score)

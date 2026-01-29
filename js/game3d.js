@@ -9,6 +9,7 @@ let backgroundStars3D; // Points statiques de fond
 let game3DActive = false;
 let game3DAnimationId = null;
 let caveWalls = { ground: [], ceiling: [] }; // Décor de grotte
+let lastPipeCenter3D = null; // Position du centre du dernier tuyau (pour limiter la distance verticale)
 
 // État du jeu 3D
 const game3DState = {
@@ -41,9 +42,11 @@ const GAME3D_CONFIG = {
     PIPE_SPEED: 0.12,        // Vitesse augmentée (était 0.08)
     GRAVITY: 0.008,
     JUMP_POWER: 0.2,
-    SPAWN_INTERVAL: 90,      // Fréquence augmentée (était 150)
+    SPAWN_INTERVAL: 90,      // Fréquence de base (sera ajustée dynamiquement)
     WORLD_WIDTH: 30,
-    WORLD_HEIGHT: 20
+    WORLD_HEIGHT: 20,
+    MAX_VERTICAL_DISTANCE_RATIO: 0.66,  // 66% de la hauteur (comme en 2D)
+    SPEED_INCREASE_RATE: 0.005  // Augmentation de vitesse par point
 };
 
 // Créer le décor simple (sol et ciel) avec défilement
@@ -474,6 +477,7 @@ function reset3DGame() {
     game3DState.currentPipeGap = GAME3D_CONFIG.PIPE_GAP;
     game3DState.isOnFire = false;
     game3DState.fireMessageTimer = 0;
+    lastPipeCenter3D = null; // Réinitialiser la position du dernier tuyau
 
     if (bird3D) {
         bird3D.position.y = 0;
@@ -515,7 +519,31 @@ function reset3DGame() {
 function create3DPipe() {
     const pipeHeight = 15;
     const gapSize = game3DState.currentPipeGap;
-    const gapCenter = (Math.random() - 0.5) * (GAME3D_CONFIG.WORLD_HEIGHT - gapSize - 4);
+
+    // Calculer la distance verticale maximale autorisée entre deux portes
+    const maxVerticalDistance = GAME3D_CONFIG.WORLD_HEIGHT * GAME3D_CONFIG.MAX_VERTICAL_DISTANCE_RATIO;
+
+    let gapCenter;
+    const minGapCenter = -GAME3D_CONFIG.WORLD_HEIGHT / 2 + gapSize / 2 + 2;
+    const maxGapCenter = GAME3D_CONFIG.WORLD_HEIGHT / 2 - gapSize / 2 - 2;
+
+    if (lastPipeCenter3D === null) {
+        // Premier tuyau : position aléatoire
+        gapCenter = (Math.random() - 0.5) * (GAME3D_CONFIG.WORLD_HEIGHT - gapSize - 4);
+    } else {
+        // Tuyaux suivants : limiter la distance par rapport au précédent
+        const minCenter = Math.max(minGapCenter, lastPipeCenter3D - maxVerticalDistance);
+        const maxCenter = Math.min(maxGapCenter, lastPipeCenter3D + maxVerticalDistance);
+
+        // Position aléatoire dans cette plage
+        gapCenter = Math.random() * (maxCenter - minCenter) + minCenter;
+
+        // S'assurer que gapCenter reste dans les limites absolues
+        gapCenter = Math.max(minGapCenter, Math.min(maxGapCenter, gapCenter));
+    }
+
+    // Sauvegarder le centre de ce tuyau pour le prochain
+    lastPipeCenter3D = gapCenter;
 
     // Couleurs selon le score (comme en 2D)
     const scoreLevel = Math.floor(game3DState.score / 10) % 7;
@@ -1092,12 +1120,18 @@ function game3DLoop(currentTime) {
             speedMultiplier *= 2;
         }
 
-        const speed = (GAME3D_CONFIG.PIPE_SPEED + (game3DState.score * 0.01)) * speedMultiplier;
+        const speed = (GAME3D_CONFIG.PIPE_SPEED + (game3DState.score * GAME3D_CONFIG.SPEED_INCREASE_RATE)) * speedMultiplier;
 
         // Spawn des tuyaux (basé sur la DISTANCE parcourue, pas le temps)
-        // Cela garantit un espacement constant même quand la vitesse change (powerups FAST/SLOW)
+        // L'espacement augmente avec la vitesse pour garder le jeu jouable
         game3DState.pipeSpawnAccumulator += speed * deltaMultiplier;
-        const PIPE_SPAWN_DISTANCE_3D = GAME3D_CONFIG.PIPE_SPEED * GAME3D_CONFIG.SPAWN_INTERVAL;
+
+        // Espacement dynamique : augmente avec la vitesse actuelle
+        // Plus c'est rapide, plus les tuyaux sont espacés
+        const speedRatio = speed / GAME3D_CONFIG.PIPE_SPEED; // 1.0 au début, augmente avec le score
+        const dynamicInterval = GAME3D_CONFIG.SPAWN_INTERVAL * speedRatio;
+        const PIPE_SPAWN_DISTANCE_3D = GAME3D_CONFIG.PIPE_SPEED * dynamicInterval;
+
         if (game3DState.pipeSpawnAccumulator >= PIPE_SPAWN_DISTANCE_3D) {
             game3DState.pipeSpawnAccumulator -= PIPE_SPAWN_DISTANCE_3D;
             create3DPipe();
